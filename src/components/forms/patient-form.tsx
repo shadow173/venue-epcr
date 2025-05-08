@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Check, ChevronDown, Upload } from "lucide-react";
+import { Calendar as CalendarIcon, Check, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -40,7 +40,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 // Define form schema with Zod
 const formSchema = z.object({
@@ -73,7 +73,7 @@ export function PatientForm({ eventId, eventState, patientId, initialData }: Pat
     lastName: "",
     dob: undefined,
     alcoholInvolved: false,
-    triageTag: "",
+    triageTag: "none", // Set default to "none" instead of empty string
     ...initialData,
   };
   
@@ -93,7 +93,8 @@ export function PatientForm({ eventId, eventState, patientId, initialData }: Pat
       formData.append("dob", values.dob.toISOString());
       formData.append("alcoholInvolved", String(values.alcoholInvolved));
       
-      if (values.triageTag) {
+      // Only append triageTag if it's not "none"
+      if (values.triageTag && values.triageTag !== "none") {
         formData.append("triageTag", values.triageTag);
       }
       
@@ -121,9 +122,8 @@ export function PatientForm({ eventId, eventState, patientId, initialData }: Pat
       
       const data = await response.json();
       
-      toast({
-        title: patientId ? "Patient updated" : "Patient created",
-        description: `Patient record has been successfully ${patientId ? "updated" : "created"}.`,
+      toast.success(patientId ? "Patient updated" : "Patient created", {
+        description: `Patient record has been successfully ${patientId ? "updated" : "created"}.`
       });
       
       // Redirect to patient detail page
@@ -131,10 +131,8 @@ export function PatientForm({ eventId, eventState, patientId, initialData }: Pat
       router.refresh();
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast({
-        title: "Error",
-        description: `Failed to ${patientId ? "update" : "create"} patient. Please try again.`,
-        variant: "destructive",
+      toast.error("Error", {
+        description: `Failed to ${patientId ? "update" : "create"} patient. Please try again.`
       });
     } finally {
       setIsSubmitting(false);
@@ -243,7 +241,8 @@ export function PatientForm({ eventId, eventState, patientId, initialData }: Pat
                     <FormLabel>Triage Tag</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
+                      defaultValue="none"
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -251,7 +250,7 @@ export function PatientForm({ eventId, eventState, patientId, initialData }: Pat
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No tag</SelectItem>
+                        <SelectItem value="none">No tag</SelectItem>
                         <SelectItem value="GREEN">Green</SelectItem>
                         <SelectItem value="YELLOW">Yellow</SelectItem>
                         <SelectItem value="RED">Red</SelectItem>

@@ -50,11 +50,16 @@ async function checkEventAccess(eventId: string, userId: string, userRole: strin
   }
 }
 
-export default async function NewPatientPage({
-  params,
-}: {
-  params: { eventId: string }
-}) {
+interface NewPatientPageProps {
+  params: {
+    eventId: string;
+  };
+}
+
+export default async function NewPatientPage({ params }: NewPatientPageProps) {
+  // Extract eventId from params
+  const { eventId } = params;
+  
   const session = await getServerSession();
   
   if (!session) {
@@ -63,7 +68,7 @@ export default async function NewPatientPage({
   
   // Check event access
   const event = await checkEventAccess(
-    params.eventId,
+    eventId,
     session.user.id,
     session.user.role
   );
@@ -76,7 +81,7 @@ export default async function NewPatientPage({
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-start">
         <Button variant="outline" size="icon" asChild className="mr-4">
-          <Link href={`/events/${params.eventId}`}>
+          <Link href={`/events/${eventId}`}>
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back to event</span>
           </Link>
@@ -86,7 +91,7 @@ export default async function NewPatientPage({
       
       <div className="grid gap-6">
         <PatientForm 
-          eventId={params.eventId} 
+          eventId={eventId} 
           eventState={event.state} 
         />
       </div>

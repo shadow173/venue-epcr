@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import * as z from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -18,12 +19,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -32,271 +27,262 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
-// Define form schema with Zod
-const formSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  name: z.string().min(2, "Name must be at least 2 characters"),
+// Define the form schema
+const userFormSchema = z.object({
+  name: z.string().min(2, {
+    message: "Name must be at least 2 characters.",
+  }),
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+  password: z.string().min(8, {
+    message: "Password must be at least 8 characters.",
+  }).optional().or(z.literal('')),
   role: z.enum(["EMT", "ADMIN"]),
-  certificationEndDate: z.date().optional(),
-  region: z.string().optional(),
+  region: z.string().optional().or(z.literal('')),
+  certificationEndDate: z.date().optional().nullable(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
-
-// List of regions (example)
-const REGIONS = [
-  "Northeast",
-  "New York",
-  "Mid-Atlantic",
-  "Southeast",
-  "Midwest",
-  "Southwest",
-  "Mountain West",
-  "West Coast",
-  "Northwest",
-  "Alaska",
-  "Hawaii",
-];
-
+// Define props for the component
 interface UserFormProps {
   userId?: string;
-  initialData?: Partial<FormValues>;
+  initialData?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    region?: string | null;
+    certificationEndDate?: Date | null;
+  };
 }
 
 export function UserForm({ userId, initialData }: UserFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const defaultValues: Partial<FormValues> = {
-    email: "",
-    name: "",
-    role: "EMT",
-    region: "",
-    ...initialData,
-  };
-  
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues,
+
+  // Set up the form with default values
+  const form = useForm<z.infer<typeof userFormSchema>>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      name: initialData?.name || "",
+      email: initialData?.email || "",
+      password: "", // Password field is empty for editing
+      role: (initialData?.role as "EMT" | "ADMIN") || "EMT",
+      region: initialData?.region || "",
+      certificationEndDate: initialData?.certificationEndDate || null,
+    },
   });
-  
-  async function onSubmit(values: FormValues) {
+
+  async function onSubmit(values: z.infer<typeof userFormSchema>) {
     setIsSubmitting(true);
-    
+
     try {
-      // Determine API endpoint and method
-      const endpoint = userId 
-        ? `/api/auth/[...nextauth]/users/${userId}` 
-        : `/api/auth/[...nextauth]/users`;
-      
-      const method = userId ? "PATCH" : "POST";
-      
-      // Submit the form
-      const response = await fetch(endpoint, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-        credentials: "include",
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to ${userId ? "update" : "create"} user`);
+      let response;
+
+      // For updating an existing user
+      if (userId) {
+        // Omit password if empty
+        const submitData = { ...values };
+        if (!submitData.password) {
+          delete submitData.password;
+        }
+
+        response = await fetch(`/api/users/${userId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(submitData),
+        });
+      } 
+      // For creating a new user
+      else {
+        response = await fetch("/api/users/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(values),
+        });
       }
-      
-      
-      toast.success(userId ? "User updated" : "User created", {
-        description: `User has been successfully ${userId ? "updated" : "created"}.`
-      });
-      
-      // Redirect to users page
-      router.push(`/users`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Something went wrong");
+      }
+
+      toast.success(userId ? "User updated successfully" : "User created successfully");
+      router.push("/users");
       router.refresh();
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast.error("Error", {
-        description: `Failed to ${userId ? "update" : "create"} user. Please try again.`
-      });
+      toast.error(error instanceof Error ? error.message : "An unexpected error occurred");
     } finally {
       setIsSubmitting(false);
     }
   }
-  
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{userId ? "Edit" : "New"} User</CardTitle>
-        <CardDescription>
-          {userId ? "Update user information" : "Add a new user to the system"}
-        </CardDescription>
-      </CardHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <div className="grid gap-6 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Full name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="email@example.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{userId ? "New Password" : "Password"}</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="••••••••" {...field} />
+                </FormControl>
+                {userId && (
+                  <FormDescription>
+                    Leave blank to keep the current password.
+                  </FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Role</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
                   <FormControl>
-                    <Input placeholder="Enter full name" {...field} />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter email address" type="email" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    {!userId && "An invitation email will be sent to this address."}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+                  <SelectContent>
+                    <SelectItem value="EMT">EMT</SelectItem>
+                    <SelectItem value="ADMIN">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="region"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Region</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. Northeast, West Coast" {...field} />
+                </FormControl>
+                <FormDescription>
+                  Optional: Specify the geographic region
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="certificationEndDate"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Certification End Date</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="EMT">EMT</SelectItem>
-                      <SelectItem value="ADMIN">Administrator</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    Administrators have full access to the system. EMTs have limited access.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="certificationEndDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Certification End Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={`w-full pl-3 text-left font-normal ${
-                            !field.value && "text-muted-foreground"
-                          }`}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Select date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                          date < new Date()
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormDescription>
-                    When the user&apos;s EMT certification expires.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="region"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Region</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select region" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="">None</SelectItem>
-                      {REGIONS.map((region) => (
-                        <SelectItem key={region} value={region}>
-                          {region}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    The primary region where this EMT is assigned.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-          
-          <CardFooter className="flex justify-between">
-            <Button 
-              variant="outline" 
-              onClick={() => router.back()}
-              type="button"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Saving..." : userId ? "Update User" : "Create User"}
-            </Button>
-          </CardFooter>
-        </form>
-      </Form>
-    </Card>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value || undefined}
+                      onSelect={field.onChange}
+                      disabled={(date) =>
+                        date < new Date()
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormDescription>
+                  Optional: When the EMT certification expires
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="flex gap-2 justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/users")}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {userId ? "Update User" : "Create User"}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }

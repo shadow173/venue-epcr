@@ -1,15 +1,16 @@
 // src/app/api/events/[eventId]/staff/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getServerSession } from '@/lib/auth';
-import { db } from '@/db';
-import { logAudit } from '@/lib/audit';
-import { sql } from 'drizzle-orm';
+import { getServerSession } from "@/lib/auth";
+import { db } from "@/db";
+import { staffAssignments, users, events } from "@/db/schema";
+import { logAudit } from "@/lib/audit";
+import { eq, and } from "drizzle-orm";
 
 // Schema for assigning staff
 const assignStaffSchema = z.object({
   userId: z.string().uuid(),
-  role: z.string(),
+  role: z.string().min(1),
 });
 
 // GET - List staff assigned to an event
@@ -24,49 +25,47 @@ export async function GET(
   }
   
   try {
+    // Extract eventId from params
+    const { eventId } = params;
+    
     // For admin or assigned staff only
     if (session.user.role !== 'ADMIN') {
-      // Check if user is assigned to this event using raw SQL
-      const isAssigned = await db.execute(sql`
-        SELECT * FROM staff_assignments 
-        WHERE event_id = ${params.eventId} AND user_id = ${session.user.id}
-        LIMIT 1
-      `);
-      
-      if (isAssigned.rows.length === 0) {
+      // Check if user is assigned to this event
+      const isAssigned = await db.select()
+        .from(staffAssignments)
+        .where(
+          and(
+            eq(staffAssignments.eventId, eventId),
+            eq(staffAssignments.userId, session.user.id)
+          )
+        )
+        .limit(1);
+        
+      if (isAssigned.length === 0) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
     
-    // Get staff with user details using raw SQL
-    const staff = await db.execute(sql`
-      SELECT 
-        sa.id, 
-        sa.role, 
-        u.id as user_id, 
-        u.name as user_name, 
-        u.email as user_email, 
-        u.role as user_role
-      FROM staff_assignments sa
-      INNER JOIN users u ON sa.user_id = u.id
-      WHERE sa.event_id = ${params.eventId}
-    `);
-    
-    // Transform the result to match the expected format
-    const formattedStaff = staff.rows.map(row => ({
-      id: row.id,
-      role: row.role,
+    // Get staff with user details
+    const staff = await db.select({
+      id: staffAssignments.id,
+      eventId: staffAssignments.eventId,
+      userId: staffAssignments.userId,
+      role: staffAssignments.role,
       user: {
-        id: row.user_id,
-        name: row.user_name,
-        email: row.user_email,
-        role: row.user_role,
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
       }
-    }));
+    })
+    .from(staffAssignments)
+    .innerJoin(users, eq(staffAssignments.userId, users.id))
+    .where(eq(staffAssignments.eventId, eventId));
     
-    await logAudit(session.user.id, 'READ', 'EVENT', params.eventId, { subresource: 'STAFF' });
+    await logAudit(session.user.id, 'READ', 'EVENT', eventId, { subresource: 'STAFF' });
     
-    return NextResponse.json(formattedStaff);
+    return NextResponse.json(staff);
   } catch (error) {
     console.error('Error fetching staff assignments:', error);
     return NextResponse.json({ error: 'Failed to fetch staff assignments' }, { status: 500 });
@@ -85,42 +84,71 @@ export async function POST(
   }
   
   try {
+    // Extract eventId from params
+    const { eventId } = params;
+    
+    // First, verify that the event exists
+    const event = await db.select()
+      .from(events)
+      .where(eq(events.id, eventId))
+      .limit(1);
+      
+    if (event.length === 0) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+    
     const body = await request.json();
     const validatedData = assignStaffSchema.parse(body);
     
-    // Check if assignment already exists using raw SQL
-    const existingAssignment = await db.execute(sql`
-      SELECT * FROM staff_assignments
-      WHERE event_id = ${params.eventId} AND user_id = ${validatedData.userId}
-      LIMIT 1
-    `);
+    // Check if user exists
+    const user = await db.select()
+      .from(users)
+      .where(eq(users.id, validatedData.userId))
+      .limit(1);
+      
+    if (user.length === 0) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
     
-    if (existingAssignment.rows.length > 0) {
+    // Check if assignment already exists
+    const existingAssignment = await db.select()
+      .from(staffAssignments)
+      .where(
+        and(
+          eq(staffAssignments.eventId, eventId),
+          eq(staffAssignments.userId, validatedData.userId)
+        )
+      )
+      .limit(1);
+      
+    if (existingAssignment.length > 0) {
       return NextResponse.json(
         { error: 'User is already assigned to this event' },
         { status: 400 }
       );
     }
     
-    // Create the assignment using raw SQL
-    const newId = crypto.randomUUID();
-    const now = new Date().toISOString();
-    
-    const newAssignment = await db.execute(sql`
-      INSERT INTO staff_assignments (id, user_id, event_id, role, created_at, updated_at)
-      VALUES (${newId}, ${validatedData.userId}, ${params.eventId}, ${validatedData.role}, ${now}, ${now})
-      RETURNING *
-    `);
-    
+    // Create the assignment
+    const newAssignment = await db.insert(staffAssignments)
+      .values({
+        id: crypto.randomUUID(),
+        userId: validatedData.userId,
+        eventId: eventId,
+        role: validatedData.role,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+      
     await logAudit(
       session.user.id,
       'CREATE',
       'EVENT',
-      params.eventId,
+      eventId,
       { subresource: 'STAFF', assignedUserId: validatedData.userId }
     );
     
-    return NextResponse.json(newAssignment.rows[0], { status: 201 });
+    return NextResponse.json(newAssignment[0], { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });

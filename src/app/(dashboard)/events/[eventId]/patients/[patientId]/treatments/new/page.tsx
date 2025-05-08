@@ -3,8 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
-import { patients, events } from "@/db/schema";
-import { eq, and, or } from "drizzle-orm";
+import { patients, events, staffAssignments } from "@/db/schema";
+import { eq, and, or, gte, lte } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { TreatmentForm } from "@/components/patients/treatment-form";
@@ -45,18 +45,25 @@ async function checkPatientAccess(eventId: string, patientId: string, userId: st
     })
     .from(patients)
     .innerJoin(events, eq(patients.eventId, events.id))
+    .innerJoin(
+      staffAssignments,
+      and(
+        eq(staffAssignments.eventId, events.id),
+        eq(staffAssignments.userId, userId)
+      )
+    )
     .where(
       and(
         eq(patients.id, patientId),
         eq(patients.eventId, eventId),
         or(
           // Created in last 24 hours
-          patients.createdAt >= yesterday.toISOString(),
+          gte(patients.createdAt, yesterday),
           // Created on same day as event
           and(
-            // This is a simplification 
-            patients.createdAt >= yesterday.toISOString(),
-            patients.createdAt <= now.toISOString()
+            // This is a better approach using date objects instead of strings
+            gte(patients.createdAt, yesterday),
+            lte(patients.createdAt, now)
           )
         )
       )
@@ -70,11 +77,17 @@ async function checkPatientAccess(eventId: string, patientId: string, userId: st
   }
 }
 
-export default async function NewTreatmentPage({
-  params,
-}: {
-  params: { eventId: string; patientId: string }
-}) {
+interface NewTreatmentPageProps {
+  params: {
+    eventId: string; 
+    patientId: string;
+  };
+}
+
+export default async function NewTreatmentPage({ params }: NewTreatmentPageProps) {
+  // Extract params
+  const { eventId, patientId } = params;
+  
   const session = await getServerSession();
   
   // Ensure user is authenticated
@@ -84,8 +97,8 @@ export default async function NewTreatmentPage({
   
   // Check patient access
   const patient = await checkPatientAccess(
-    params.eventId,
-    params.patientId,
+    eventId,
+    patientId,
     session.user.id,
     session.user.role
   );
@@ -98,7 +111,7 @@ export default async function NewTreatmentPage({
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-start">
         <Button variant="outline" size="icon" asChild className="mr-4">
-          <Link href={`/events/${params.eventId}/patients/${params.patientId}`}>
+          <Link href={`/events/${eventId}/patients/${patientId}`}>
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back to patient</span>
           </Link>
@@ -110,8 +123,8 @@ export default async function NewTreatmentPage({
       
       <div className="grid gap-6">
         <TreatmentForm 
-          patientId={params.patientId} 
-          eventId={params.eventId} 
+          patientId={patientId} 
+          eventId={eventId} 
         />
       </div>
     </div>

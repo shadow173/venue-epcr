@@ -1,4 +1,6 @@
-import { notFound } from "next/navigation";
+// src/app/(dashboard)/events/[eventId]/patients/[patientId]/page.tsx
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { getServerSession } from "@/lib/auth";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -12,7 +14,8 @@ import {
   assessments, 
   vitals, 
   treatments, 
-  users 
+  users,
+  staffAssignments
 } from "@/db/schema";
 import { eq, and, desc, or } from "drizzle-orm";
 import { format } from "date-fns";
@@ -27,7 +30,6 @@ import {
   AlertCircle,
   PlusCircle
 } from "lucide-react";
-import Link from "next/link";
 import { PatientDetailsForm } from "@/components/patients/patient-details-form";
 import { AssessmentForm } from "@/components/patients/assessment-form";
 import { NarrativeForm } from "@/components/patients/narrative-form";
@@ -35,19 +37,31 @@ import { CompletionForm } from "@/components/patients/completion-form";
 import { VitalsList } from "@/components/patients/vitals-list";
 import { TreatmentsList } from "@/components/patients/treatments-list";
 
-// Get patient data
-async function getPatient(patientId: string, eventId: string) {
-  const session = await getServerSession();
-  if (!session?.user?.id) return null;
-
+// Get patient data with access control
+async function getPatient(patientId: string, eventId: string, userId: string, userRole: string) {
   // For EMTs, check time-based access restrictions
-  if (session.user.role !== "ADMIN") {
+  if (userRole !== "ADMIN") {
     const now = new Date();
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     
-    // First check if this patient was created within time restrictions
-    const patientWithTimeCheck = await db.select({
+    // First check if user is assigned to the event
+    const isAssigned = await db.select()
+      .from(staffAssignments)
+      .where(
+        and(
+          eq(staffAssignments.userId, userId),
+          eq(staffAssignments.eventId, eventId)
+        )
+      )
+      .limit(1);
+    
+    if (isAssigned.length === 0) {
+      return null; // User not assigned to this event
+    }
+    
+    // Then check if this patient was created within time restrictions
+    const patientTimeCheck = await db.select({
       id: patients.id,
       createdAt: patients.createdAt,
       eventStartDate: events.startDate,
@@ -63,7 +77,6 @@ async function getPatient(patientId: string, eventId: string) {
           patients.createdAt >= yesterday.toISOString(),
           // Created on same day as event
           and(
-            // This is a simplification 
             patients.createdAt >= yesterday.toISOString(),
             patients.createdAt <= now.toISOString()
           )
@@ -73,7 +86,7 @@ async function getPatient(patientId: string, eventId: string) {
     .limit(1);
     
     // If no patient found with time restrictions, return null
-    if (patientWithTimeCheck.length === 0) return null;
+    if (patientTimeCheck.length === 0) return null;
   }
   
   // Get patient details with assessment
@@ -175,15 +188,23 @@ function getTriageTagClass(tag: string | null): string {
   }
 }
 
-export default async function PatientDetailPage({ 
-  params 
-}: { 
-  params: { eventId: string; patientId: string } 
-}) {
-  const session = await getServerSession();
-  if (!session) return null;
+interface PatientDetailPageProps {
+  params: {
+    eventId: string;
+    patientId: string;
+  };
+}
+
+export default async function PatientDetailPage({ params }: PatientDetailPageProps) {
+  // Extract params
+  const { eventId, patientId } = params;
   
-  const patient = await getPatient(params.patientId, params.eventId);
+  const session = await getServerSession();
+  if (!session) {
+    redirect("/auth/signin");
+  }
+  
+  const patient = await getPatient(patientId, eventId, session.user.id, session.user.role);
   
   // If patient not found or user doesn't have access
   if (!patient) {
@@ -203,7 +224,7 @@ export default async function PatientDetailPage({
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
-          <Link href={`/events/${params.eventId}`}>
+          <Link href={`/events/${eventId}`}>
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back to event</span>
           </Link>
@@ -306,7 +327,7 @@ export default async function PatientDetailPage({
                 <h2 className="text-lg font-semibold">Vitals</h2>
                 {canEdit && (
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={`/events/${params.eventId}/patients/${params.patientId}/vitals/new`}>
+                    <Link href={`/events/${eventId}/patients/${patientId}/vitals/new`}>
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Add Vitals
                     </Link>
@@ -316,7 +337,7 @@ export default async function PatientDetailPage({
               
               <VitalsList 
                 vitals={patientVitals} 
-                patientId={params.patientId} 
+                patientId={patientId} 
                 canEdit={canEdit} 
               />
             </div>
@@ -326,7 +347,7 @@ export default async function PatientDetailPage({
                 <h2 className="text-lg font-semibold">Treatments</h2>
                 {canEdit && (
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={`/events/${params.eventId}/patients/${params.patientId}/treatments/new`}>
+                    <Link href={`/events/${eventId}/patients/${patientId}/treatments/new`}>
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Add Treatment
                     </Link>
@@ -336,7 +357,7 @@ export default async function PatientDetailPage({
               
               <TreatmentsList 
                 treatments={patientTreatments} 
-                patientId={params.patientId} 
+                patientId={patientId} 
                 canEdit={canEdit} 
               />
             </div>

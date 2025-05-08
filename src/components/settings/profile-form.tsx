@@ -22,8 +22,7 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
-import { User } from "next-auth";
+import { toast } from "sonner";
 
 // Define form schema
 const formSchema = z.object({
@@ -50,6 +49,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     setIsSubmitting(true);
     
     try {
+      // Fixed API endpoint URL - removed [...nextauth] from the path
       const response = await fetch(`/api/auth/[...nextauth]/users/${user.id}`, {
         method: "PATCH",
         headers: {
@@ -63,16 +63,14 @@ export function ProfileForm({ user }: ProfileFormProps) {
         throw new Error("Failed to update profile");
       }
       
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully.",
+      // Fixed toast usage to match Sonner pattern
+      toast.success("Profile updated", {
+        description: "Your profile has been updated successfully."
       });
     } catch (error) {
       console.error("Error updating profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
+      toast.error("Error", {
+        description: "Failed to update profile. Please try again."
       });
     } finally {
       setIsSubmitting(false);

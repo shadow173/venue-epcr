@@ -4,11 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import * as z from "zod";
+import { Loader2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -24,33 +27,25 @@ import {
 import {
   Card,
   CardContent,
+  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
-import { User } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
-// Define staff roles
-const STAFF_ROLES = [
-  "EMT",
-  "Lead EMT",
-  "Supervisor",
-  "Paramedic",
-  "Medical Director",
-  "Logistics",
-  "Admin"
-];
-
-// Define form schema
-const formSchema = z.object({
-  userId: z.string().uuid("Please select a staff member"),
-  role: z.string().min(1, "Please select a role"),
+// Define the form schema
+const staffAssignmentSchema = z.object({
+  userId: z.string().uuid({
+    message: "Please select a user.",
+  }),
+  role: z.string().min(1, {
+    message: "Please enter a role.",
+  }),
 });
 
-type FormValues = z.infer<typeof formSchema>;
-
+// Define the types for the component props
 interface User {
   id: string;
   name: string;
@@ -65,172 +60,165 @@ interface StaffAssignmentFormProps {
 
 export function StaffAssignmentForm({ eventId, users }: StaffAssignmentFormProps) {
   const router = useRouter();
+  const [customRole, setCustomRole] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  // Common roles for quick selection
+  const commonRoles = [
+    "EMT",
+    "Paramedic",
+    "Nurse",
+    "Physician",
+    "Operations",
+
+  ];
+  
+  // Form definition
+  const form = useForm<z.infer<typeof staffAssignmentSchema>>({
+    resolver: zodResolver(staffAssignmentSchema),
     defaultValues: {
       userId: "",
       role: "",
     },
   });
   
-  async function onSubmit(values: FormValues) {
-    if (users.length === 0) {
-      toast({
-        title: "Error",
-        description: "No available staff to assign.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+  // Form submission handler
+  async function onSubmit(values: z.infer<typeof staffAssignmentSchema>) {
     setIsSubmitting(true);
     
     try {
       const response = await fetch(`/api/events/${eventId}/staff`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(values),
-        credentials: "include",
       });
       
       if (!response.ok) {
-        throw new Error("Failed to assign staff");
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to assign staff');
       }
       
-      toast({
-        title: "Staff assigned",
-        description: "The staff member has been successfully assigned to this event.",
-      });
-      
+      toast.success('Staff member assigned successfully!');
       router.push(`/events/${eventId}`);
       router.refresh();
     } catch (error) {
-      console.error("Error assigning staff:", error);
-      toast({
-        title: "Error",
-        description: "Failed to assign staff. Please try again.",
-        variant: "destructive",
-      });
+      console.error('Error assigning staff:', error);
+      toast.error(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
     }
   }
   
-  if (users.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Assign Staff</CardTitle>
-          <CardDescription>
-            Add staff members to this event.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center py-10">
-          <div className="rounded-full bg-gray-100 p-3 dark:bg-gray-800">
-            <User className="h-8 w-8 text-gray-500 dark:text-gray-400" />
-          </div>
-          <h3 className="mt-4 text-lg font-medium">No available staff</h3>
-          <p className="mt-1 text-center text-sm text-gray-500 dark:text-gray-400">
-            All available staff members have already been assigned to this event.
-          </p>
-          <Button asChild className="mt-4">
-            <a href="/events">Go Back to Events</a>
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Handle role selection
+  const handleRoleSelect = (value: string) => {
+    if (value === "Other") {
+      setCustomRole(true);
+      form.setValue("role", "");
+    } else {
+      setCustomRole(false);
+      form.setValue("role", value);
+    }
+  };
   
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Assign Staff</CardTitle>
+        <CardTitle>Assign Staff Member</CardTitle>
         <CardDescription>
-          Add staff members to this event.
+          Select a user and assign them a role for this event
         </CardDescription>
       </CardHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6">
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
               name="userId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Staff Member</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+                  <FormLabel>User</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select staff member" />
+                        <SelectValue placeholder="Select a user" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {users.map((user) => (
                         <SelectItem key={user.id} value={user.id}>
-                          {user.name} ({user.email})
+                          {user.name} ({user.email}) - {user.role}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormDescription>
+                    Select a user to assign to this event
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {STAFF_ROLES.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {role}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
+            <div className="space-y-4">
+              <FormItem>
+                <FormLabel>Role</FormLabel>
+                <Select onValueChange={handleRoleSelect}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {commonRoles.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Select a predefined role or choose "Other" to enter a custom role
+                </FormDescription>
+              </FormItem>
+              
+              {customRole && (
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Custom Role</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter custom role"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
-            />
-          </CardContent>
-          
-          <CardFooter className="flex justify-between">
-            <Button 
-              variant="outline" 
-              onClick={() => router.back()}
-              type="button"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Assigning..." : "Assign Staff"}
-            </Button>
-          </CardFooter>
-        </form>
-      </Form>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push(`/events/${eventId}`)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Assign Staff
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
     </Card>
   );
 }

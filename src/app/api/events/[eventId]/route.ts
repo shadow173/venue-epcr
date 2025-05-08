@@ -1,59 +1,45 @@
 // src/app/api/events/[eventId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getServerSession } from '@/lib/auth';
-import { db } from '@/db';
-import { logAudit } from '@/lib/audit';
-import { sql, SQLWrapper } from 'drizzle-orm';
+import { getServerSession } from "@/lib/auth";
+import { db } from "@/db";
+import { events, venues, staffAssignments, patients, assessments, users } from "@/db/schema";
+import { logAudit } from "@/lib/audit";
+import { eq, and, count } from "drizzle-orm";
 
 // Schema for updating an event
 const updateEventSchema = z.object({
   name: z.string().min(2).optional(),
-  venueId: z.string().uuid().optional(),
+  venueId: z.string().uuid().optional().nullable(),
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   state: z.string().min(2).optional(),
   timezone: z.string().optional(),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
 });
 
-// Type for database records
-type EventRecord = Record<string, unknown>;
-type VenueNestedResult = EventRecord & {
-  venue_id?: string;
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  state: string;
-  timezone: string;
-  notes?: string;
-  createdAt: string;
-  'venue.id'?: string;
-  'venue.name'?: string;
-  'venue.address'?: string;
-  'venue.city'?: string;
-  'venue.state'?: string;
-  'venue.zipCode'?: string;
-};
-
-// Check if user has access to the event
-async function userHasEventAccess(userId: string, userRole: string, eventId: string): Promise<boolean> {
+// Helper function to check if user has access to event
+async function userHasAccess(userId: string, userRole: string, eventId: string): Promise<boolean> {
+  // Admin has full access
   if (userRole === 'ADMIN') {
     return true;
   }
   
-  // Use the execute method with raw SQL query
-  const result = await db.execute<EventRecord>(
-    sql`SELECT * FROM staff_assignments 
-        WHERE user_id = ${userId} AND event_id = ${eventId} 
-        LIMIT 1`
-  );
-  
-  return result.rows.length > 0;
+  // Check if user is assigned to the event
+  const assignment = await db.select()
+    .from(staffAssignments)
+    .where(
+      and(
+        eq(staffAssignments.userId, userId),
+        eq(staffAssignments.eventId, eventId)
+      )
+    )
+    .limit(1);
+    
+  return assignment.length > 0;
 }
 
-// GET - Get a specific event with venue details
+// GET - Get a specific event with venue details and counts
 export async function GET(
   request: NextRequest,
   { params }: { params: { eventId: string } }
@@ -66,7 +52,7 @@ export async function GET(
   
   try {
     // Check access
-    const hasAccess = await userHasEventAccess(
+    const hasAccess = await userHasAccess(
       session.user.id,
       session.user.role,
       params.eventId
@@ -76,49 +62,96 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     
-    // Use execute method with SQL for query
-    const result = await db.execute<VenueNestedResult>(
-      sql`SELECT 
-            e.id, e.name, e.start_date as "startDate", e.end_date as "endDate", 
-            e.state, e.timezone, e.notes, e.created_at as "createdAt",
-            v.id as "venue.id", v.name as "venue.name", v.address as "venue.address", 
-            v.city as "venue.city", v.state as "venue.state", v.zip_code as "venue.zipCode"
-          FROM events e
-          LEFT JOIN venues v ON e.venue_id = v.id
-          WHERE e.id = ${params.eventId}
-          LIMIT 1`
-    );
+    // Get event with venue
+    const eventData = await db.select({
+      id: events.id,
+      name: events.name,
+      startDate: events.startDate,
+      endDate: events.endDate,
+      state: events.state,
+      timezone: events.timezone,
+      notes: events.notes,
+      createdAt: events.createdAt,
+      venue: {
+        id: venues.id,
+        name: venues.name,
+        address: venues.address,
+        city: venues.city,
+        state: venues.state,
+        zipCode: venues.zipCode,
+        notes: venues.notes,
+      }
+    })
+    .from(events)
+    .leftJoin(venues, eq(events.venueId, venues.id))
+    .where(eq(events.id, params.eventId))
+    .limit(1);
     
-    if (result.rows.length === 0) {
+    if (eventData.length === 0) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
+
+    // Get staff count
+    const staffCount = await db.select({
+      count: count()
+    })
+    .from(staffAssignments)
+    .where(eq(staffAssignments.eventId, params.eventId));
     
-    // Get the first row
-    const eventData = result.rows[0];
+    // Get patient count
+    const patientCount = await db.select({
+      count: count()
+    })
+    .from(patients)
+    .where(eq(patients.eventId, params.eventId));
     
-    // Transform the flat result into a nested object structure
-    const transformedEvent = {
-      id: eventData.id,
-      name: eventData.name,
-      startDate: eventData.startDate,
-      endDate: eventData.endDate,
-      state: eventData.state,
-      timezone: eventData.timezone,
-      notes: eventData.notes,
-      createdAt: eventData.createdAt,
-      venue: {
-        id: eventData['venue.id'],
-        name: eventData['venue.name'],
-        address: eventData['venue.address'],
-        city: eventData['venue.city'],
-        state: eventData['venue.state'],
-        zipCode: eventData['venue.zipCode']
+    // Get staff details
+    const staffData = await db.select({
+      id: staffAssignments.id,
+      eventId: staffAssignments.eventId,
+      userId: staffAssignments.userId,
+      role: staffAssignments.role,
+      user: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
       }
+    })
+    .from(staffAssignments)
+    .innerJoin(users, eq(staffAssignments.userId, users.id))
+    .where(eq(staffAssignments.eventId, params.eventId));
+    
+    // Get patient details with status
+    const patientData = await db.select({
+      id: patients.id,
+      firstName: patients.firstName,
+      lastName: patients.lastName,
+      dob: patients.dob,
+      triageTag: patients.triageTag,
+      status: assessments.status,
+      createdAt: patients.createdAt,
+    })
+    .from(patients)
+    .leftJoin(assessments, eq(patients.id, assessments.patientId))
+    .where(eq(patients.eventId, params.eventId));
+    
+    // Determine if user can edit this event
+    const canEdit = session.user.role === 'ADMIN';
+    
+    // Combine all data
+    const result = {
+      ...eventData[0],
+      staff: staffData,
+      patients: patientData,
+      staffCount: staffCount[0].count,
+      patientCount: patientCount[0].count,
+      canEdit,
     };
     
     await logAudit(session.user.id, 'READ', 'EVENT', params.eventId);
     
-    return NextResponse.json(transformedEvent);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching event:', error);
     return NextResponse.json({ error: 'Failed to fetch event' }, { status: 500 });
@@ -140,35 +173,54 @@ export async function PATCH(
     const body = await request.json();
     const validatedData = updateEventSchema.parse(body);
     
-    // Create update data object directly, transforming dates at point of use
-    const updatedAt = new Date();
+    // Create update data object with only the fields provided
+    const updateData: Record<string, any> = {
+      updatedAt: new Date(),
+    };
     
-    // Build the SET clause dynamically
-    const setClauses: SQLWrapper[] = [];
-    if (validatedData.name !== undefined) setClauses.push(sql`name = ${validatedData.name}`);
-    if (validatedData.venueId !== undefined) setClauses.push(sql`venue_id = ${validatedData.venueId}`);
-    if (validatedData.startDate !== undefined) setClauses.push(sql`start_date = ${new Date(validatedData.startDate)}`);
-    if (validatedData.endDate !== undefined) setClauses.push(sql`end_date = ${new Date(validatedData.endDate)}`);
-    if (validatedData.state !== undefined) setClauses.push(sql`state = ${validatedData.state}`);
-    if (validatedData.timezone !== undefined) setClauses.push(sql`timezone = ${validatedData.timezone}`);
-    if (validatedData.notes !== undefined) setClauses.push(sql`notes = ${validatedData.notes}`);
-    setClauses.push(sql`updated_at = ${updatedAt}`);
+    // Only add provided fields to the update object
+    if (validatedData.name !== undefined) {
+      updateData.name = validatedData.name;
+    }
     
-    // Join all SET clauses with commas
-    const setClause = sql.join(setClauses, sql`, `);
+    if (validatedData.venueId !== undefined) {
+      updateData.venueId = validatedData.venueId;
+    }
     
-    // Execute the update query
-    const result = await db.execute<EventRecord>(
-      sql`UPDATE events SET ${setClause} WHERE id = ${params.eventId} RETURNING *`
-    );
+    if (validatedData.state !== undefined) {
+      updateData.state = validatedData.state;
+    }
     
-    if (result.rows.length === 0) {
+    if (validatedData.timezone !== undefined) {
+      updateData.timezone = validatedData.timezone;
+    }
+    
+    if (validatedData.notes !== undefined) {
+      updateData.notes = validatedData.notes;
+    }
+    
+    // Convert string dates to Date objects
+    if (validatedData.startDate !== undefined) {
+      updateData.startDate = new Date(validatedData.startDate);
+    }
+    
+    if (validatedData.endDate !== undefined) {
+      updateData.endDate = new Date(validatedData.endDate);
+    }
+    
+    // Update event
+    const updatedEvent = await db.update(events)
+      .set(updateData)
+      .where(eq(events.id, params.eventId))
+      .returning();
+    
+    if (!updatedEvent.length) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
     
     await logAudit(session.user.id, 'UPDATE', 'EVENT', params.eventId);
     
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(updatedEvent[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });
@@ -191,17 +243,18 @@ export async function DELETE(
   }
   
   try {
-    const result = await db.execute<EventRecord>(
-      sql`DELETE FROM events WHERE id = ${params.eventId} RETURNING *`
-    );
+    // Delete event - Note: This assumes cascading deletes are set up in the database
+    const deletedEvent = await db.delete(events)
+      .where(eq(events.id, params.eventId))
+      .returning();
     
-    if (result.rows.length === 0) {
+    if (!deletedEvent.length) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
     
     await logAudit(session.user.id, 'DELETE', 'EVENT', params.eventId);
     
-    return NextResponse.json({ message: 'Event deleted successfully' });
+    return NextResponse.json({ success: true, message: 'Event deleted successfully' });
   } catch (error) {
     console.error('Error deleting event:', error);
     return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 });

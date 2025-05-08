@@ -1,7 +1,7 @@
 // src/app/api/events/[eventId]/patients/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { db } from '@/db';
 import { patients, assessments } from '@/db/schema';
 import { logAudit } from '@/lib/audit';

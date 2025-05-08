@@ -20,7 +20,7 @@ const navigation = [
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Venues", href: "/venues", icon: MapPin },
   { name: "Patients", href: "/patients", icon: FileText },
-  { name: "Staff", href: "/staff", icon: Users },
+  { name: "Staff", href: "/users", icon: Users },
   { name: "Reports", href: "/reports", icon: BarChart },
 ];
 

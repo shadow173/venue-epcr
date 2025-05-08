@@ -50,11 +50,16 @@ async function getEvent(eventId: string) {
   }
 }
 
-export default async function EditEventPage({
-  params,
-}: {
-  params: { eventId: string }
-}) {
+interface EditEventPageProps {
+  params: {
+    eventId: string;
+  };
+}
+
+export default async function EditEventPage({ params }: EditEventPageProps) {
+  // Extract eventId from params first
+  const { eventId } = params;
+
   const session = await getServerSession();
   
   // Only admins can edit events
@@ -63,7 +68,7 @@ export default async function EditEventPage({
   }
   
   const [event, venuesList] = await Promise.all([
-    getEvent(params.eventId),
+    getEvent(eventId),
     getVenues(),
   ]);
   
@@ -74,15 +79,15 @@ export default async function EditEventPage({
   // Convert dates to format expected by the form
   const formattedEvent = {
     ...event,
-    startDate: new Date(event.startDate),
-    endDate: new Date(event.endDate),
+    startDate: event.startDate,
+    endDate: event.endDate,
   };
   
   return (
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-start">
         <Button variant="outline" size="icon" asChild className="mr-4">
-          <Link href={`/events/${params.eventId}`}>
+          <Link href={`/events/${eventId}`}>
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back to event</span>
           </Link>
@@ -92,7 +97,7 @@ export default async function EditEventPage({
       
       <div className="grid gap-6 md:grid-cols-1">
         <EventForm 
-          eventId={params.eventId} 
+          eventId={eventId} 
           initialData={formattedEvent} 
           venues={venuesList} 
         />

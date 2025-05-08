@@ -1,7 +1,7 @@
 // src/app/api/patients/[patientId]/assessment/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
+import { ge } from '@/lib/auth';
 import { db } from '@/db';
 import { assessments, patients, events, staffAssignments } from '@/db/schema';
 import { logAudit } from '@/lib/audit';

@@ -1,6 +1,9 @@
 // src/lib/auth.ts
 import { getServerSession as nextAuthGetServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { db } from "@/db";
+import { staffAssignments } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 
 // Extend NextAuth types
 declare module "next-auth" {
@@ -18,7 +21,7 @@ declare module "next-auth" {
   }
 }
 
-// Server-side session function - simplified version
+// Server-side session function
 export async function getServerSession() {
   return await nextAuthGetServerSession(authOptions);
 }
@@ -33,6 +36,7 @@ export type AuthUser = {
 
 /**
  * Check if the current user has access to an event
+ * This is a server-side function for use in server components
  */
 export async function userHasEventAccess(eventId: string): Promise<boolean> {
   try {
@@ -48,17 +52,17 @@ export async function userHasEventAccess(eventId: string): Promise<boolean> {
     }
     
     // For non-admin users, check if they're assigned to the event
-    const response = await fetch(`/api/events/${eventId}/access`, {
-      credentials: 'include',
-      cache: 'no-store'
-    });
+    const assignments = await db.select()
+      .from(staffAssignments)
+      .where(
+        and(
+          eq(staffAssignments.userId, session.user.id),
+          eq(staffAssignments.eventId, eventId)
+        )
+      )
+      .limit(1);
     
-    if (!response.ok) {
-      return false;
-    }
-    
-    const { hasAccess } = await response.json();
-    return hasAccess;
+    return assignments.length > 0;
   } catch (error) {
     console.error("Error checking event access:", error);
     return false;

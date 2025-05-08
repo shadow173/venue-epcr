@@ -23,7 +23,7 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner"; // Changed toast import
 import { SunIcon, MoonIcon, LaptopIcon } from "lucide-react";
 
 // Define form schema
@@ -50,16 +50,14 @@ export function AppearanceForm() {
     try {
       setTheme(values.theme);
       
-      toast({
-        title: "Appearance updated",
-        description: "Your theme preference has been updated.",
+      // Updated toast usage to match Sonner pattern
+      toast.success("Appearance updated", {
+        description: "Your theme preference has been updated."
       });
     } catch (error) {
       console.error("Error updating appearance:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update appearance. Please try again.",
-        variant: "destructive",
+      toast.error("Error", {
+        description: "Failed to update appearance. Please try again."
       });
     } finally {
       setIsSubmitting(false);

@@ -1,284 +1,321 @@
-// src/app/(dashboard)/events/[eventId]/page.tsx
-
+// src/app/(dashboard)/events/page.tsx
 import { Suspense } from "react";
-import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { getServerSession } from "@/lib/auth";
+import { db } from "@/db";
+import { events, venues, patients, staffAssignments } from "@/db/schema";
+import { eq, desc, count, and } from "drizzle-orm";
 import { format } from "date-fns";
 import { 
   Calendar, 
   MapPin, 
-  Clock, 
-  Users, 
-  Edit, 
-  Trash2,
-  AlertTriangle,
-  CheckCircle,
-  X
+  Plus,
+  Search,
+  Users,
+  Clock
 } from "lucide-react";
-import { getEvent } from "@/lib/api/events";
-import { userHasEventAccess } from "@/lib/auth";
-import { StaffAssignmentList } from "@/components/staff/staff-assignment-list";
-import { PatientList } from "@/components/patients/patient-list";
+
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+import { 
+  Card, 
+  CardContent, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription 
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { Input } from "@/components/ui/input";
 
-interface EventDetailPageProps {
-  params: {
-    eventId: string;
-  };
+// Helper to determine event status
+function getEventStatus(startDate: Date, endDate: Date): string {
+  const now = new Date();
+  
+  if (now < startDate) {
+    return "Upcoming";
+  } else if (now <= endDate) {
+    return "In Progress";
+  } else {
+    return "Completed";
+  }
 }
 
-export default async function EventDetailPage({ params }: EventDetailPageProps) {
-  // Get the event ID from params
-  const eventId = params.eventId;
-  
-  // Check if user has access to this event
-  const hasAccess = await userHasEventAccess(eventId);
-  
-  if (!hasAccess) {
-    redirect("/");
+// Helper to get badge variant for status
+function getStatusBadgeVariant(status: string): "default" | "secondary" | "success" {
+  switch (status) {
+    case "Upcoming":
+      return "secondary";
+    case "In Progress":
+      return "success";
+    case "Completed":
+    default:
+      return "default";
   }
+}
+
+// Events List component - fetches directly from DB
+async function EventsList() {
+  const session = await getServerSession();
+  if (!session?.user?.id) return null;
+
+  const isAdmin = session.user.role === 'ADMIN';
+  const userId = session.user.id;
   
-  // Fetch event data
-  const event = await getEvent(eventId);
+  // Build query based on user role
+  let eventQuery;
   
-  if (!event) {
-    notFound();
+  if (isAdmin) {
+    // Admin sees all events
+    eventQuery = db.select({
+      id: events.id,
+      name: events.name,
+      startDate: events.startDate,
+      endDate: events.endDate,
+      state: events.state,
+      venue: {
+        id: venues.id,
+        name: venues.name,
+        address: venues.address,
+      },
+      patientCount: count(patients.id),
+    })
+    .from(events)
+    .leftJoin(venues, eq(events.venueId, venues.id))
+    .leftJoin(patients, eq(patients.eventId, events.id))
+    .groupBy(events.id, venues.id)
+    .orderBy(desc(events.startDate));
+  } else {
+    // EMTs only see events they're assigned to
+    eventQuery = db.select({
+      id: events.id,
+      name: events.name,
+      startDate: events.startDate,
+      endDate: events.endDate,
+      state: events.state,
+      venue: {
+        id: venues.id,
+        name: venues.name,
+        address: venues.address,
+      },
+      patientCount: count(patients.id),
+    })
+    .from(events)
+    .innerJoin(
+      staffAssignments,
+      and(
+        eq(staffAssignments.eventId, events.id),
+        eq(staffAssignments.userId, userId)
+      )
+    )
+    .leftJoin(venues, eq(events.venueId, venues.id))
+    .leftJoin(patients, eq(patients.eventId, events.id))
+    .groupBy(events.id, venues.id, staffAssignments.id)
+    .orderBy(desc(events.startDate));
   }
-  
-  // Get current user session
-  const session = await getServerSession(authOptions);
+
+  const userEvents = await eventQuery;
+
+  if (userEvents.length === 0) {
+    return (
+      <div className="flex min-h-[300px] flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30">
+          <Calendar className="h-6 w-6 text-blue-500 dark:text-blue-400" />
+        </div>
+        <h3 className="mt-4 text-lg font-medium">No events found</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          {isAdmin 
+            ? "Get started by creating your first event."
+            : "You haven't been assigned to any events yet."}
+        </p>
+        {isAdmin && (
+          <Button asChild className="mt-6">
+            <Link href="/events/new">Create New Event</Link>
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  // Group events into categories
+  const upcomingEvents = [];
+  const activeEvents = [];
+  const pastEvents = [];
+
+  for (const event of userEvents) {
+    const status = getEventStatus(event.startDate, event.endDate);
+    
+    if (status === "Upcoming") {
+      upcomingEvents.push({ ...event, status });
+    } else if (status === "In Progress") {
+      activeEvents.push({ ...event, status });
+    } else {
+      pastEvents.push({ ...event, status });
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Active Events */}
+      {activeEvents.length > 0 && (
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Active Events</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {activeEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Upcoming Events */}
+      {upcomingEvents.length > 0 && (
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Upcoming Events</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {upcomingEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Past Events */}
+      {pastEvents.length > 0 && (
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Past Events</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {pastEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Event card component
+function EventCard({ event }: { event: any }) {
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <CardTitle className="text-lg">{event.name}</CardTitle>
+          <Badge variant={getStatusBadgeVariant(event.status)}>
+            {event.status}
+          </Badge>
+        </div>
+        <CardDescription className="mt-1 flex items-center">
+          <Clock className="mr-1 h-3 w-3" />
+          {format(new Date(event.startDate), "PPP")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pb-2">
+        <div className="space-y-2">
+          {event.venue?.name && (
+            <div className="flex items-start gap-2 text-sm">
+              <MapPin className="mt-0.5 h-4 w-4 text-gray-400" />
+              <div>
+                <span className="font-medium">{event.venue.name}</span>
+                {event.venue.address && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {event.venue.address}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-2 text-sm">
+            <Users className="h-4 w-4 text-gray-400" />
+            <span>{event.patientCount} patient{event.patientCount !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between pt-4 bg-gray-50 dark:bg-gray-800/50">
+        <Button asChild variant="ghost" size="sm">
+          <Link href={`/events/${event.id}`}>
+            View Details
+          </Link>
+        </Button>
+        <Button asChild variant="ghost" size="sm">
+          <Link href={`/events/${event.id}/patients/new`}>
+            Add Patient
+          </Link>
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
+// Loading skeleton
+function EventsListSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <Skeleton className="h-8 w-40 mb-4" />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <CardHeader>
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="mt-2 h-4 w-1/2" />
+              </CardHeader>
+              <CardContent className="pb-6">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="mt-2 h-4 w-2/3" />
+              </CardContent>
+              <CardFooter className="bg-gray-50 dark:bg-gray-800/50">
+                <Skeleton className="h-8 w-full" />
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default async function EventsPage() {
+  const session = await getServerSession();
   const isAdmin = session?.user?.role === "ADMIN";
   
-  // Format dates for display
-  const startDate = new Date(event.startDate);
-  const endDate = event.endDate ? new Date(event.endDate) : null;
-  
-  const formattedStartDate = format(startDate, "MMMM d, yyyy");
-  const formattedStartTime = format(startDate, "h:mm a");
-  const formattedEndTime = endDate ? format(endDate, "h:mm a") : null;
-  
-  // Helper function to get status badge variant
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "active":
-        return "success";
-      case "upcoming":
-        return "secondary";
-      case "completed":
-        return "default";
-      case "cancelled":
-        return "destructive";
-      default:
-        return "outline";
-    }
-  };
-  
   return (
-    <div className="space-y-6">
-      {/* Event Header */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <div className="animate-fadeIn space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">{event.name}</h1>
-            <Badge variant={getStatusBadgeVariant(event.status)}>{event.status}</Badge>
-          </div>
-          <p className="text-gray-500 dark:text-gray-400">
-            {event.description}
+          <h1 className="text-2xl font-bold tracking-tight">Events</h1>
+          <p className="mt-1 text-gray-500 dark:text-gray-400">
+            View and manage events
           </p>
         </div>
-        {event.canEdit && (
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline">
-              <a href={`/events/${event.id}/edit`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Event
-              </a>
+        
+        {isAdmin && (
+          <div className="mt-4 flex md:mt-0">
+            <Button asChild>
+              <Link href="/events/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New Event
+              </Link>
             </Button>
-            
-            {isAdmin && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the event
-                      and all associated data including patient records.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction className="bg-red-600 hover:bg-red-700">
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
           </div>
         )}
       </div>
       
-      {/* Event Details */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>Event Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start gap-2">
-              <Calendar className="mt-0.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-              <div>
-                <p className="font-medium">{formattedStartDate}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {formattedStartTime} {formattedEndTime ? `- ${formattedEndTime}` : ""}
-                </p>
-              </div>
-            </div>
-            {event.venue && (
-              <div className="flex items-start gap-2">
-                <MapPin className="mt-0.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                <div>
-                  <p className="font-medium">{event.venue.name}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {event.venue.address}, {event.venue.city}, {event.venue.state} {event.venue.zipCode}
-                  </p>
-                </div>
-              </div>
-            )}
-            <div className="flex items-start gap-2">
-              <Users className="mt-0.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-              <div>
-                <p className="font-medium">Event Capacity</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {event.expectedAttendees || "Not specified"}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>Event Stats</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Patients</p>
-                <p className="text-2xl font-bold">{event.patients?.length || 0}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Staff</p>
-                <p className="text-2xl font-bold">{event.staff?.length || 0}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</p>
-                <p className="text-2xl font-bold">{event.patients?.filter(p => p.status === "complete").length || 0}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pending</p>
-                <p className="text-2xl font-bold">{event.patients?.filter(p => p.status !== "complete").length || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {event.venue && event.venue.notes && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle>Venue Notes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm">{event.venue.notes}</p>
-            </CardContent>
-          </Card>
-        )}
+      <div className="rounded-lg border bg-card p-4">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input 
+            type="search" 
+            placeholder="Search events..." 
+            className="pl-8 bg-background w-full md:w-96"
+          />
+        </div>
       </div>
-      
-      {/* Tabs for Staff and Patients */}
-      <Tabs defaultValue="patients" className="w-full">
-        <TabsList>
-          <TabsTrigger value="patients">Patients</TabsTrigger>
-          <TabsTrigger value="staff">Staff</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="patients" className="mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Patient Records</h2>
-            {event.canEdit && (
-              <Button asChild>
-                <a href={`/events/${event.id}/patients/new`}>Add Patient</a>
-              </Button>
-            )}
-          </div>
-          
-          <Suspense fallback={
-            <div className="space-y-3">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-48 w-full" />
-            </div>
-          }>
-            <PatientList 
-              patients={event.patients} 
-              eventId={event.id} 
-              canEdit={event.canEdit} 
-            />
-          </Suspense>
-        </TabsContent>
-        
-        <TabsContent value="staff" className="mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Staff Assignments</h2>
-            {event.canEdit && (
-              <Button asChild>
-                <a href={`/events/${event.id}/staff/assign`}>Assign Staff</a>
-              </Button>
-            )}
-          </div>
-          
-          <Suspense fallback={
-            <div className="space-y-3">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-48 w-full" />
-            </div>
-          }>
-            <StaffAssignmentList 
-              staff={event.staff} 
-              eventId={event.id} 
-              canEdit={event.canEdit} 
-            />
-          </Suspense>
-        </TabsContent>
-      </Tabs>
+
+      <Suspense fallback={<EventsListSkeleton />}>
+        <EventsList />
+      </Suspense>
     </div>
   );
 }

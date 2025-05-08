@@ -160,12 +160,24 @@ export default function ReportsPage() {
       // Build query string from filters
       const queryParams = new URLSearchParams();
       
-      if (filters.eventId) queryParams.append('eventId', filters.eventId);
-      if (filters.venueId) queryParams.append('venueId', filters.venueId);
-      if (filters.patientName) queryParams.append('patientName', filters.patientName);
-      if (filters.startDate) queryParams.append('startDate', filters.startDate.toISOString());
-      if (filters.endDate) queryParams.append('endDate', filters.endDate.toISOString());
-      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.eventId && filters.eventId !== 'all-events') 
+        queryParams.append('eventId', filters.eventId);
+      
+      if (filters.venueId && filters.venueId !== 'all-venues') 
+        queryParams.append('venueId', filters.venueId);
+      
+      if (filters.patientName) 
+        queryParams.append('patientName', filters.patientName);
+      
+      if (filters.startDate) 
+        queryParams.append('startDate', filters.startDate.toISOString());
+      
+      if (filters.endDate) 
+        queryParams.append('endDate', filters.endDate.toISOString());
+      
+      if (filters.status && filters.status !== 'all-statuses') 
+        queryParams.append('status', filters.status);
+      
       queryParams.append('page', filters.page.toString());
       queryParams.append('limit', filters.limit.toString());
       
@@ -213,7 +225,16 @@ export default function ReportsPage() {
     setResults(null);
   };
   
-  // Export CSV (simplified - in a real app, would use proper CSV generation)
+  // Helper to escape CSV fields
+  const escapeCSV = (value: string): string => {
+    // If value contains commas, quotes, or newlines, wrap it in quotes and escape internal quotes
+    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+  
+  // Export CSV with proper escaping
   const exportCSV = () => {
     if (!results || results.data.length === 0) {
       toast.error('No data to export', {
@@ -222,49 +243,70 @@ export default function ReportsPage() {
       return;
     }
     
-    // Simple CSV generation for demo purposes
-    const headers = [
-      'Patient ID',
-      'First Name',
-      'Last Name',
-      'DOB',
-      'Event',
-      'Venue',
-      'Status',
-      'Disposition',
-      'Created At',
-      'Created By',
-    ].join(',');
-    
-    const rows = results.data.map(patient => [
-      patient.patientId,
-      patient.firstName,
-      patient.lastName,
-      new Date(patient.dob).toLocaleDateString(),
-      patient.eventName,
-      patient.venueName,
-      patient.status || 'Incomplete',
-      patient.disposition || 'N/A',
-      new Date(patient.createdAt).toLocaleString(),
-      patient.creator?.name || 'Unknown',
-    ].join(','));
-    
-    const csv = [headers, ...rows].join('\n');
-    
-    // Create download link
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `patient-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast.success('Export complete', {
-      description: 'Your report has been exported to CSV.'
-    });
+    try {
+      // Define headers
+      const headers = [
+        'Patient ID',
+        'First Name',
+        'Last Name',
+        'DOB',
+        'Event',
+        'Venue',
+        'Status',
+        'Disposition',
+        'Created At',
+        'Created By',
+      ];
+      
+      // Create CSV rows with proper escaping
+      const csvContent = [
+        // Headers
+        headers.map(escapeCSV).join(','),
+        
+        // Data rows
+        ...results.data.map(patient => [
+          escapeCSV(patient.patientId),
+          escapeCSV(patient.firstName),
+          escapeCSV(patient.lastName),
+          escapeCSV(new Date(patient.dob).toLocaleDateString()),
+          escapeCSV(patient.eventName),
+          escapeCSV(patient.venueName),
+          escapeCSV(patient.status || 'Incomplete'),
+          escapeCSV(patient.disposition || 'N/A'),
+          escapeCSV(new Date(patient.createdAt).toLocaleString()),
+          escapeCSV(patient.creator?.name || 'Unknown'),
+        ].join(','))
+      ].join('\n');
+      
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // Set up download attributes
+      link.setAttribute('href', url);
+      link.setAttribute('download', `patient-report-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      link.style.visibility = 'hidden';
+      
+      // Add to DOM, trigger click, then remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL object
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      toast.success('Export complete', {
+        description: 'Your report has been exported to CSV.'
+      });
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      toast.error('Export failed', {
+        description: 'There was a problem exporting the data to CSV.'
+      });
+    }
   };
   
   // Calculate age from DOB
@@ -323,14 +365,14 @@ export default function ReportsPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Event</label>
               <Select
-                value={filters.eventId}
+                value={filters.eventId || 'all-events'}
                 onValueChange={(value) => updateFilter('eventId', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All events" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All events</SelectItem>
+                  <SelectItem value="all-events">All events</SelectItem>
                   {events.map((event) => (
                     <SelectItem key={event.id} value={event.id}>
                       {event.name}
@@ -343,14 +385,14 @@ export default function ReportsPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Venue</label>
               <Select
-                value={filters.venueId}
+                value={filters.venueId || 'all-venues'}
                 onValueChange={(value) => updateFilter('venueId', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All venues" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All venues</SelectItem>
+                  <SelectItem value="all-venues">All venues</SelectItem>
                   {venues.map((venue) => (
                     <SelectItem key={venue.id} value={venue.id}>
                       {venue.name}
@@ -363,14 +405,14 @@ export default function ReportsPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
               <Select
-                value={filters.status}
+                value={filters.status || 'all-statuses'}
                 onValueChange={(value) => updateFilter('status', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all-statuses">All statuses</SelectItem>
                   <SelectItem value="incomplete">Incomplete</SelectItem>
                   <SelectItem value="complete">Complete</SelectItem>
                 </SelectContent>

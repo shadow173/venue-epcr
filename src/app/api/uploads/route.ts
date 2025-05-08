@@ -1,6 +1,6 @@
 // src/app/api/uploads/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { ge } from '@/lib/auth';
 import { generateS3Key, uploadToS3 } from '@/lib/s3';
 import { logAudit } from '@/lib/audit';
 

@@ -1,9 +1,10 @@
+// src/app/api/events/[eventId]/staff/[assignmentId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-import { db } from '@/db';
-import { staffAssignments } from '@/db/schema';
-import { logAudit } from '@/lib/audit';
-import { eq, and } from 'drizzle-orm';
+import { getServerSession } from "@/lib/auth";
+import { db } from "@/db";
+import { staffAssignments } from "@/db/schema";
+import { logAudit } from "@/lib/audit";
+import { eq, and } from "drizzle-orm";
 
 // DELETE - Remove staff assignment (admin only)
 export async function DELETE(
@@ -17,16 +18,20 @@ export async function DELETE(
   }
   
   try {
+    // Extract params
+    const { eventId, assignmentId } = params;
+    
+    // Delete the assignment
     const deletedAssignment = await db.delete(staffAssignments)
       .where(
         and(
-          eq(staffAssignments.id, params.assignmentId),
-          eq(staffAssignments.eventId, params.eventId)
+          eq(staffAssignments.id, assignmentId),
+          eq(staffAssignments.eventId, eventId)
         )
       )
       .returning();
-    
-    if (!deletedAssignment.length) {
+      
+    if (deletedAssignment.length === 0) {
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }
     
@@ -34,8 +39,8 @@ export async function DELETE(
       session.user.id,
       'DELETE',
       'EVENT',
-      params.eventId,
-      { subresource: 'STAFF', assignmentId: params.assignmentId }
+      eventId,
+      { subresource: 'STAFF', assignmentId: assignmentId }
     );
     
     return NextResponse.json({ message: 'Staff assignment removed successfully' });

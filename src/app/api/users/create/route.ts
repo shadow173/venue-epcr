@@ -1,23 +1,27 @@
 // src/app/api/users/create/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { ge } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { hashPassword } from '@/lib/auth/password';
+import { logAudit } from '@/lib/audit';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
+
+// Schema for creating a user
 const createUserSchema = z.object({
-  email: z.string().email(),
   name: z.string().min(2),
+  email: z.string().email(),
   password: z.string().min(8),
   role: z.enum(['EMT', 'ADMIN']).default('EMT'),
-  certificationEndDate: z.string().optional(),
-  region: z.string().optional(),
+  region: z.string().optional().nullable(),
+  certificationEndDate: z.date().optional().nullable(),
 });
 
 export async function POST(request: NextRequest) {
   // Only admins can create users
-  const session = await auth(request);
+  const session = await getServerSession();
+  
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest) {
       name: validatedData.name,
       password: hashedPassword,
       role: validatedData.role,
-      certificationEndDate: validatedData.certificationEndDate ? new Date(validatedData.certificationEndDate) : null,
+      certificationEndDate: validatedData.certificationEndDate,
       region: validatedData.region,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -59,6 +63,8 @@ export async function POST(request: NextRequest) {
       region: users.region,
       createdAt: users.createdAt,
     });
+    
+    await logAudit(session.user.id, 'CREATE', 'USER', newUser[0].id);
     
     return NextResponse.json(newUser[0], { status: 201 });
   } catch (error) {

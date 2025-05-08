@@ -8,10 +8,10 @@ import { useSession } from "next-auth/react";
 import { format } from "date-fns";
 import { 
   Search, 
-
   Calendar, 
   Tag,
-  AlertTriangle
+  AlertTriangle,
+  PlusCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,8 +62,8 @@ export default function PatientsPage() {
   const router = useRouter();
   
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [eventFilter, setEventFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all-statuses"); // Changed from ""
+  const [eventFilter, setEventFilter] = useState("all-events"); // Changed from ""
   const [isLoading, setIsLoading] = useState(true);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -145,12 +145,12 @@ export default function PatientsPage() {
     }
     
     // Filter by status
-    if (statusFilter) {
+    if (statusFilter && statusFilter !== "all-statuses") {
       result = result.filter((patient) => patient.status === statusFilter);
     }
     
     // Filter by event
-    if (eventFilter) {
+    if (eventFilter && eventFilter !== "all-events") {
       result = result.filter((patient) => patient.eventId === eventFilter);
     }
     
@@ -189,6 +189,13 @@ export default function PatientsPage() {
         return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200";
     }
   }
+  
+  // Handle event selection for adding a patient
+  const handleEventSelect = (eventId: string) => {
+    if (eventId && eventId !== "select-event") {
+      router.push(`/events/${eventId}/patients/new`);
+    }
+  };
   
   // Loading state
   if (isLoading) {
@@ -233,17 +240,16 @@ export default function PatientsPage() {
         {session?.user?.role === "ADMIN" && (
           <div className="mt-4 flex md:mt-0">
             <Select
-              value=""
-              onValueChange={(eventId) => {
-                if (eventId) {
-                  router.push(`/events/${eventId}/patients/new`);
-                }
-              }}
+              value="select-event"
+              onValueChange={handleEventSelect}
             >
               <SelectTrigger className="w-[220px]">
                 <SelectValue placeholder="Add Patient to Event" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="select-event">
+                  <span className="text-muted-foreground">Select an event</span>
+                </SelectItem>
                 {events.map((event) => (
                   <SelectItem key={event.id} value={event.id}>
                     {event.name}
@@ -282,7 +288,7 @@ export default function PatientsPage() {
                   <SelectValue placeholder="All events" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All events</SelectItem>
+                  <SelectItem value="all-events">All events</SelectItem>
                   {events.map((event) => (
                     <SelectItem key={event.id} value={event.id}>
                       {event.name}
@@ -296,7 +302,7 @@ export default function PatientsPage() {
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all-statuses">All statuses</SelectItem>
                   <SelectItem value="incomplete">Incomplete</SelectItem>
                   <SelectItem value="complete">Complete</SelectItem>
                 </SelectContent>
@@ -315,6 +321,18 @@ export default function PatientsPage() {
                   ? "No patient records have been created yet."
                   : "No patients match your search criteria."}
               </p>
+              {session?.user?.role === "ADMIN" && patients.length === 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => router.push(`/events/${events[0]?.id}/patients/new`)}
+                  disabled={!events.length}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add First Patient
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">

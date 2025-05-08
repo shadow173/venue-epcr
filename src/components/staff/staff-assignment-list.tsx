@@ -1,8 +1,21 @@
+// src/components/staff/staff-assignment-list.tsx
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, UserX, ShieldCheck, Shield } from "lucide-react";
+import { 
+  Search, 
+  UserRound,
+  Mail,
+  ShieldCheck,
+  Trash2,
+  AlertTriangle,
+  UserPlus
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -11,167 +24,255 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface StaffMember {
   id: string;
   userId: string;
-  userName: string;
-  userEmail: string;
-  userRole: string;
   role: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
 }
 
 interface StaffAssignmentListProps {
-  staff?: StaffMember[]; // Make staff optional
+  staff: StaffMember[];
   eventId: string;
   canEdit: boolean;
 }
 
-export function StaffAssignmentList({ staff = [], eventId, canEdit }: StaffAssignmentListProps) {
+export function StaffAssignmentList({ staff, eventId, canEdit }: StaffAssignmentListProps) {
   const router = useRouter();
-  const [staffToRemove, setStaffToRemove] = useState<string | null>(null);
-  const [isRemoving, setIsRemoving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [staffToRemove, setStaffToRemove] = useState<StaffMember | null>(null);
   
+  // Apply filters to the staff list
+  const filteredStaff = staff.filter((member) => {
+    // Apply search filter (case insensitive)
+    const searchMatch = searchQuery === "" || 
+      member.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.user.email.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Apply role filter
+    const roleMatch = roleFilter === "" || member.role === roleFilter;
+    
+    return searchMatch && roleMatch;
+  });
+  
+  // Get unique roles for the filter dropdown
+  const uniqueRoles = Array.from(new Set(staff.map(member => member.role)));
+  
+  // Handle removing a staff member
   const handleRemoveStaff = async () => {
     if (!staffToRemove) return;
     
-    setIsRemoving(true);
-    
     try {
-      const response = await fetch(`/api/events/${eventId}/staff/${staffToRemove}`, {
-        method: "DELETE",
-        credentials: "include",
+      const response = await fetch(`/api/events/${eventId}/staff/${staffToRemove.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
       });
       
-      if (!response.ok) {
-        throw new Error("Failed to remove staff member");
+      if (response.ok) {
+        // Refresh the page to show updated staff list
+        router.refresh();
+        setIsRemoveDialogOpen(false);
+      } else {
+        console.error('Failed to remove staff member');
       }
-      
-      toast.success("Staff removed", {
-        description: "Staff member has been removed from this event."
-      });
-      
-      router.refresh();
     } catch (error) {
-      console.error("Error removing staff:", error);
-      toast.error("Error", {
-        description: "Failed to remove staff member. Please try again."
-      });
-    } finally {
-      setIsRemoving(false);
-      setStaffToRemove(null);
+      console.error('Error removing staff member:', error);
     }
   };
   
-  if (!staff || staff.length === 0) {
+  // If no staff after filtering
+  if (filteredStaff.length === 0) {
     return (
-      <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30">
-          <User className="h-6 w-6 text-blue-500 dark:text-blue-400" />
+      <div>
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+              <Input
+                type="search"
+                placeholder="Search staff..."
+                className="w-full pl-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+          {uniqueRoles.length > 0 && (
+            <div className="flex gap-4">
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All roles</SelectItem>
+                  {uniqueRoles.map(role => (
+                    <SelectItem key={role} value={role}>{role}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
-        <h3 className="mt-4 text-lg font-medium">No staff assigned</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          No staff members have been assigned to this event yet.
-        </p>
-        {canEdit && (
-          <Button asChild className="mt-6">
-            <a href={`/events/${eventId}/staff/assign`}>Assign Staff</a>
-          </Button>
-        )}
+        
+        <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
+          <div className="rounded-full bg-gray-100 p-3 dark:bg-gray-800">
+            <AlertTriangle className="h-6 w-6 text-gray-400" />
+          </div>
+          <h3 className="mt-4 text-sm font-medium">No staff found</h3>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {staff.length === 0
+              ? "No staff members have been assigned to this event yet."
+              : "No staff members match your search criteria."}
+          </p>
+          {canEdit && (
+            <Button asChild className="mt-4">
+              <Link href={`/events/${eventId}/staff/assign`}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Assign Staff
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
   
   return (
-    <div className="rounded-md border border-gray-200 dark:border-gray-700">
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Type</TableHead>
-              {canEdit && <TableHead className="text-right">Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {staff.map((member) => (
-              <TableRow key={member.id}>
-                <TableCell className="font-medium">{member.userName}</TableCell>
-                <TableCell>{member.userEmail}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{member.role}</Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    {member.userRole === "ADMIN" ? (
-                      <>
-                        <ShieldCheck className="h-4 w-4 text-purple-500" />
-                        <Badge variant="secondary">ADMIN</Badge>
-                      </>
-                    ) : (
-                      <>
-                        <Shield className="h-4 w-4 text-blue-500" />
-                        <Badge>EMT</Badge>
-                      </>
-                    )}
-                  </div>
-                </TableCell>
-                {canEdit && (
-                  <TableCell className="text-right">
-                    <AlertDialog open={staffToRemove === member.id} onOpenChange={(open) => !open && setStaffToRemove(null)}>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-800 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/30"
-                          onClick={() => setStaffToRemove(member.id)}
-                        >
-                          <UserX className="mr-1 h-4 w-4" />
-                          Remove
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remove Staff Member</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to remove {member.userName} from this event?
-                            This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleRemoveStaff}
-                            disabled={isRemoving}
-                            className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
-                          >
-                            {isRemoving ? "Removing..." : "Remove"}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
-                )}
+    <div>
+      <div className="mb-4 flex flex-col gap-4 sm:flex-row">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+            <Input
+              type="search"
+              placeholder="Search staff..."
+              className="w-full pl-9"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+        {uniqueRoles.length > 0 && (
+          <div className="flex gap-4">
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All roles</SelectItem>
+                {uniqueRoles.map(role => (
+                  <SelectItem key={role} value={role}>{role}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+      
+      <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>System Role</TableHead>
+                {canEdit && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredStaff.map((staffMember) => (
+                <TableRow key={staffMember.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center">
+                      <UserRound className="mr-2 h-4 w-4 text-gray-400" />
+                      {staffMember.user.name}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center text-gray-600 dark:text-gray-400">
+                      <Mail className="mr-2 h-4 w-4" />
+                      {staffMember.user.email}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {staffMember.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <ShieldCheck className="mr-2 h-4 w-4 text-gray-400" />
+                      <Badge variant={staffMember.user.role === "ADMIN" ? "secondary" : "default"}>
+                        {staffMember.user.role}
+                      </Badge>
+                    </div>
+                  </TableCell>
+                  {canEdit && (
+                    <TableCell className="text-right">
+                      <Dialog open={isRemoveDialogOpen && staffToRemove?.id === staffMember.id} onOpenChange={setIsRemoveDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            onClick={() => setStaffToRemove(staffMember)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Remove</span>
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Remove Staff Member</DialogTitle>
+                            <DialogDescription>
+                              Are you sure you want to remove {staffMember.user.name} from this event?
+                              This action cannot be undone.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsRemoveDialogOpen(false)}>
+                              Cancel
+                            </Button>
+                            <Button variant="destructive" onClick={handleRemoveStaff}>
+                              Remove
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { db } from '@/db';
 import { patients, assessments, vitals, treatments, staffAssignments, events } from '@/db/schema';
 import { logAudit } from '@/lib/audit';
