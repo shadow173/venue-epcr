@@ -3,9 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { db } from '@/db';
-import { events, staffAssignments, venues } from '@/db/schema';
 import { logAudit } from '@/lib/audit';
-import { sql } from 'drizzle-orm';
+import { sql, SQLWrapper } from 'drizzle-orm';
 
 // Schema for updating an event
 const updateEventSchema = z.object({

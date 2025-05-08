@@ -5,7 +5,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/db';
 import { treatments, assessments, patients, events, staffAssignments } from '@/db/schema';
 import { logAudit } from '@/lib/audit';
-import { eq, and, gte, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 
 // Schema for creating treatment
 const createTreatmentSchema = z.object({
@@ -114,7 +114,7 @@ export async function GET(
       .where(eq(treatments.assessmentId, assessment[0].id))
       .orderBy(desc(treatments.timestamp));
     
-    await logAudit(session.user.id, 'READ', 'TREATMENT', null, {
+    await logAudit(session.user.id, 'READ', 'TREATMENT', undefined, {
       patientId: params.patientId,
       assessmentId: assessment[0].id,
     });

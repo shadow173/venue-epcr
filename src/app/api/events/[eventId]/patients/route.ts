@@ -80,7 +80,7 @@ export async function GET(
       yesterday.setHours(yesterday.getHours() - 24);
       
       // Parse the event date from the result - using start_date as the column name
-      const eventDay = new Date(eventResult.rows[0].start_date);
+      const eventDay = new Date(eventResult.rows[0].start_date as string);
       eventDay.setHours(0, 0, 0, 0);
       
       // Calculate end of day for event date

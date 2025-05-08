@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const fileUrl = await uploadToS3(buffer, file.type, s3Key);
     
     // Using a valid AuditResource type from the available options
-    await logAudit(session.user.id, 'CREATE', 'PATIENT', null, {
+    await logAudit(session.user.id, 'CREATE', 'PATIENT', undefined, {
       filename: file.name,
       fileType: file.type,
       s3Key,

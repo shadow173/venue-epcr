@@ -5,7 +5,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/db';
 import { assessments, patients, events, staffAssignments } from '@/db/schema';
 import { logAudit } from '@/lib/audit';
-import { eq, and, } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 // Schema for updating assessment
 const updateAssessmentSchema = z.object({
@@ -19,6 +19,14 @@ const updateAssessmentSchema = z.object({
   status: z.enum(['incomplete', 'complete']).optional(),
 });
 
+// Define the type for updateData based on the schema
+type UpdateAssessmentData = z.infer<typeof updateAssessmentSchema> & {
+  updatedAt: Date;
+  updatedBy: string;
+  patientSignatureTimestamp?: Date;
+  emtSignatureTimestamp?: Date;
+};
+
 // Check if user has access to the patient
 async function userHasPatientAccess(userId: string, userRole: string, patientId: string) {
   // Admin has full access
@@ -27,22 +35,24 @@ async function userHasPatientAccess(userId: string, userRole: string, patientId:
   }
   
   // Get patient and event info
-  const patientRecord = await db.select({
-    eventId: patients.eventId,
-    createdAt: patients.createdAt,
-    eventStartDate: events.startDate,
-  })
-  .from(patients)
-  .innerJoin(events, eq(patients.eventId, events.id))
-  .where(eq(patients.id, patientId))
-  .limit(1);
+  const patientRecord = await db
+    .select({
+      eventId: patients.eventId,
+      createdAt: patients.createdAt,
+      eventStartDate: events.startDate,
+    })
+    .from(patients)
+    .innerJoin(events, eq(patients.eventId, events.id))
+    .where(eq(patients.id, patientId))
+    .limit(1);
   
   if (patientRecord.length === 0) {
     return false;
   }
   
   // Check if user is assigned to the event
-  const assignments = await db.select()
+  const assignments = await db
+    .select()
     .from(staffAssignments)
     .where(
       and(
@@ -105,7 +115,7 @@ export async function PATCH(
     const validatedData = updateAssessmentSchema.parse(body);
     
     // Prepare update data
-    const updateData: any = {
+    const updateData: UpdateAssessmentData = {
       ...validatedData,
       updatedAt: new Date(),
       updatedBy: session.user.id,
