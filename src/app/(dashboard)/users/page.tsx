@@ -2,7 +2,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { desc } from "drizzle-orm";
@@ -63,7 +63,7 @@ async function getUsers() {
 
 // Users List component
 async function UsersListContent() {
-  const session = await auth();
+  const session = await getServerSession();
   if (!session?.user?.id || session.user.role !== "ADMIN") {
     notFound();
   }
@@ -215,7 +215,7 @@ function UsersListSkeleton() {
 }
 
 export default async function UsersPage() {
-  const session = await auth();
+  const session = await getServerSession();
   
   // Only admins can access this page
   if (!session || session.user.role !== "ADMIN") {

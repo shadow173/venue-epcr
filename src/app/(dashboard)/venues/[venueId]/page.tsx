@@ -2,7 +2,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
 import { venues, events } from "@/db/schema";
 import { eq, and, gte } from "drizzle-orm";
@@ -106,7 +106,7 @@ async function VenueInfo({ venueId }: { venueId: string }) {
     notFound();
   }
   
-  const session = await auth();
+  const session = await getServerSession();
   const isAdmin = session?.user?.role === "ADMIN";
   
   return (
@@ -210,15 +210,17 @@ async function UpcomingEvents({ venueId }: { venueId: string }) {
     </div>
   );
 }
-
-export default async function VenueDetailPage({ 
-  params 
-}: { 
-  params: { venueId: string } 
+export default async function VenueDetailPage({
+  params
+}: {
+  params: { venueId: string }
 }) {
-  const session = await auth();
+  const session = await getServerSession();
   if (!session) return null;
   
+  // Extract the venueId parameter first
+  const venueId = params.venueId;
+
   return (
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-start">
@@ -231,11 +233,13 @@ export default async function VenueDetailPage({
       </div>
       
       <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-        <VenueInfo venueId={params.venueId} />
+        {/* Use the extracted venueId instead of params.venueId */}
+        <VenueInfo venueId={venueId} />
       </Suspense>
       
       <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-        <UpcomingEvents venueId={params.venueId} />
+        {/* Use the extracted venueId instead of params.venueId */}
+        <UpcomingEvents venueId={venueId} />
       </Suspense>
     </div>
   );

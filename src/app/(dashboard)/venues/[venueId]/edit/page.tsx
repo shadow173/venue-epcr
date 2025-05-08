@@ -1,7 +1,7 @@
 // src/app/(dashboard)/venues/[venueId]/edit/page.tsx
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
 import { venues } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -37,7 +37,7 @@ export default async function EditVenuePage({
 }: {
   params: { venueId: string }
 }) {
-  const session = await auth();
+  const session = await getServerSession();
   
   // Ensure user is authenticated
   if (!session) {

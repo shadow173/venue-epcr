@@ -20,7 +20,7 @@ const searchParamsSchema = z.object({
 
 // GET - Admin search and reporting endpoint
 export async function GET(request: NextRequest) {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

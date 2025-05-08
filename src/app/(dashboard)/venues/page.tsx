@@ -1,7 +1,7 @@
 // src/app/(dashboard)/venues/page.tsx
 import { Suspense } from "react";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
 import { venues } from "@/db/schema";
 import { desc } from "drizzle-orm";
@@ -45,7 +45,7 @@ async function getVenues() {
 
 // Venues List component
 async function VenuesListContent() {
-  const session = await auth();
+  const session = await getServerSession();
   if (!session?.user?.id) return null;
 
   const allVenues = await getVenues();
@@ -139,7 +139,7 @@ function VenuesListSkeleton() {
 }
 
 export default async function VenuesPage() {
-  const session = await auth();
+  const session = await getServerSession();
   const isAdmin = session?.user?.role === "ADMIN";
   
   return (

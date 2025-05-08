@@ -1,7 +1,7 @@
 // src/app/(dashboard)/events/[eventId]/edit/page.tsx
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
 import { events, venues } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -55,7 +55,7 @@ export default async function EditEventPage({
 }: {
   params: { eventId: string }
 }) {
-  const session = await auth();
+  const session = await getServerSession();
   
   // Only admins can edit events
   if (!session || session.user.role !== "ADMIN") {

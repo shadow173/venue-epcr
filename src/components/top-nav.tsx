@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { Menu, Transition } from "@headlessui/react";
@@ -17,6 +17,12 @@ interface TopNavProps {
 
 export function TopNav({ user }: TopNavProps) {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  
+  // Add this useEffect to handle client-side initialization
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   // Get user initials for avatar
   const getUserInitials = () => {
@@ -91,7 +97,7 @@ export function TopNav({ user }: TopNavProps) {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Theme toggle */}
+          {/* Theme toggle - Only show icon after component is mounted */}
           <Button
             variant="ghost"
             size="icon"
@@ -99,10 +105,14 @@ export function TopNav({ user }: TopNavProps) {
             className="mr-2"
           >
             <span className="sr-only">Toggle theme</span>
-            {theme === "dark" ? (
-              <SunIcon className="h-5 w-5" />
+            {mounted ? (
+              theme === "dark" ? (
+                <SunIcon className="h-5 w-5" />
+              ) : (
+                <MoonIcon className="h-5 w-5" />
+              )
             ) : (
-              <MoonIcon className="h-5 w-5" />
+              <div className="h-5 w-5" />
             )}
           </Button>
           

@@ -1,13 +1,13 @@
 // src/app/(dashboard)/users/new/page.tsx
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { UserForm } from "@/components/users/user-form";
 
 export default async function NewUserPage() {
-  const session = await auth();
+  const session = await getServerSession();
   
   // Only admins can create users
   if (!session || session.user.role !== "ADMIN") {

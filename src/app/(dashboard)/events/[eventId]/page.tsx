@@ -6,16 +6,12 @@ import { format } from "date-fns";
 import { 
   Calendar, 
   MapPin, 
-  Clock, 
   Users, 
   Edit, 
-  Trash2,
-  AlertTriangle,
-  CheckCircle,
-  X
+  Trash2
 } from "lucide-react";
-import { getEvent } from "@/lib/api/events";
-import { userHasEventAccess } from "@/lib/auth";
+import { Patient } from "@/lib/api/events";
+import { getServerSession, userHasEventAccess } from "@/lib/auth";
 import { StaffAssignmentList } from "@/components/staff/staff-assignment-list";
 import { PatientList } from "@/components/patients/patient-list";
 import { Button } from "@/components/ui/button";
@@ -23,8 +19,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -41,8 +35,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 
 interface EventDetailPageProps {
   params: {
@@ -51,8 +43,8 @@ interface EventDetailPageProps {
 }
 
 export default async function EventDetailPage({ params }: EventDetailPageProps) {
-  // Get the event ID from params
-  const eventId = params.eventId;
+  // Correctly await the params in Next.js App Router
+  const { eventId } = params;
   
   // Check if user has access to this event
   const hasAccess = await userHasEventAccess(eventId);
@@ -61,15 +53,33 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     redirect("/");
   }
   
-  // Fetch event data
-  const event = await getEvent(eventId);
+  // Fetch event data using absolute URL (fixing the URL parsing error)
+  let event;
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ''}/api/events/${eventId}`, {
+      credentials: 'include',
+      cache: 'no-store'
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        notFound();
+      }
+      throw new Error(`Failed to fetch event: ${response.statusText}`);
+    }
+    
+    event = await response.json();
+  } catch (error) {
+    console.error("Error fetching event:", error);
+    notFound();
+  }
   
   if (!event) {
     notFound();
   }
   
   // Get current user session
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const isAdmin = session?.user?.role === "ADMIN";
   
   // Format dates for display
@@ -81,10 +91,10 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const formattedEndTime = endDate ? format(endDate, "h:mm a") : null;
   
   // Helper function to get status badge variant
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusBadgeVariant = (status: string): "secondary" | "default" | "destructive" | "outline" => {
     switch (status.toLowerCase()) {
       case "active":
-        return "success";
+        return "secondary"; // Changed from "success" to "secondary"
       case "upcoming":
         return "secondary";
       case "completed":
@@ -202,11 +212,15 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
               </div>
               <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</p>
-                <p className="text-2xl font-bold">{event.patients?.filter(p => p.status === "complete").length || 0}</p>
+                <p className="text-2xl font-bold">
+                  {event.patients?.filter((p: Patient) => p.status === "complete").length || 0}
+                </p>
               </div>
               <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pending</p>
-                <p className="text-2xl font-bold">{event.patients?.filter(p => p.status !== "complete").length || 0}</p>
+                <p className="text-2xl font-bold">
+                  {event.patients?.filter((p: Patient) => p.status !== "complete").length || 0}
+                </p>
               </div>
             </div>
           </CardContent>

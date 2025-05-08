@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Check, Clock } from "lucide-react";
+import { Calendar as CalendarIcon} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   name: z.string().min(1, "Event name is required"),
@@ -129,9 +129,8 @@ export function EventForm({ eventId, initialData, venues = [] }: EventFormProps)
       
       const data = await response.json();
       
-      toast({
-        title: eventId ? "Event updated" : "Event created",
-        description: `Event has been successfully ${eventId ? "updated" : "created"}.`,
+      toast.success(eventId ? "Event updated" : "Event created", {
+        description: `Event has been successfully ${eventId ? "updated" : "created"}.`
       });
       
       // Redirect to event detail page
@@ -139,10 +138,8 @@ export function EventForm({ eventId, initialData, venues = [] }: EventFormProps)
       router.refresh();
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast({
-        title: "Error",
-        description: `Failed to ${eventId ? "update" : "create"} event. Please try again.`,
-        variant: "destructive",
+      toast.error("Error", {
+        description: `Failed to ${eventId ? "update" : "create"} event. Please try again.`
       });
     } finally {
       setIsSubmitting(false);
@@ -332,13 +329,13 @@ export function EventForm({ eventId, initialData, venues = [] }: EventFormProps)
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
-                      {venues.map((venue) => (
-                        <SelectItem key={venue.id} value={venue.id}>
-                          {venue.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+  <SelectItem value="none">None</SelectItem>
+  {venues.map((venue) => (
+    <SelectItem key={venue.id} value={venue.id}>
+      {venue.name}
+    </SelectItem>
+  ))}
+</SelectContent>
                   </Select>
                   <FormDescription>
                     The venue where the event takes place.
@@ -390,4 +387,4 @@ export function EventForm({ eventId, initialData, venues = [] }: EventFormProps)
       </Form>
     </Card>
   );
-} 
+}

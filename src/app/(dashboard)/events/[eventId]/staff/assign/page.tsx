@@ -1,7 +1,7 @@
 // src/app/(dashboard)/events/[eventId]/staff/assign/page.tsx
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
 import { events, users, staffAssignments } from "@/db/schema";
 import { eq, not, inArray } from "drizzle-orm";
@@ -70,7 +70,7 @@ export default async function AssignStaffPage({
 }: {
   params: { eventId: string }
 }) {
-  const session = await auth();
+  const session = await getServerSession();
   
   // Only admins can assign staff
   if (!session || session.user.role !== "ADMIN") {

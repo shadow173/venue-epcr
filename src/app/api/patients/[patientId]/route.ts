@@ -97,7 +97,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { eventId: string, patientId: string } }
 ) {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -196,7 +196,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { eventId: string, patientId: string } }
 ) {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -301,7 +301,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { eventId: string, patientId: string } }
 ) {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

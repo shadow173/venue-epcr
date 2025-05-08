@@ -1,7 +1,7 @@
 // src/app/(dashboard)/users/[userId]/edit/page.tsx
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -36,7 +36,7 @@ export default async function EditUserPage({
 }: {
   params: { userId: string }
 }) {
-  const session = await auth();
+  const session = await getServerSession();
   
   // Only admins can edit users
   if (!session || session.user.role !== "ADMIN") {

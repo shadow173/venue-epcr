@@ -36,12 +36,12 @@ interface StaffMember {
 }
 
 interface StaffAssignmentListProps {
-  staff: StaffMember[];
+  staff?: StaffMember[]; // Make staff optional
   eventId: string;
   canEdit: boolean;
 }
 
-export function StaffAssignmentList({ staff, eventId, canEdit }: StaffAssignmentListProps) {
+export function StaffAssignmentList({ staff = [], eventId, canEdit }: StaffAssignmentListProps) {
   const router = useRouter();
   const [staffToRemove, setStaffToRemove] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -77,7 +77,7 @@ export function StaffAssignmentList({ staff, eventId, canEdit }: StaffAssignment
     }
   };
   
-  if (staff.length === 0) {
+  if (!staff || staff.length === 0) {
     return (
       <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30">

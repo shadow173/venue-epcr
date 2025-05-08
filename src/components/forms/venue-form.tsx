@@ -32,7 +32,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 // Define form schema with Zod
 const formSchema = z.object({
@@ -107,9 +107,8 @@ export function VenueForm({ venueId, initialData }: VenueFormProps) {
       
       const data = await response.json();
       
-      toast({
-        title: venueId ? "Venue updated" : "Venue created",
-        description: `Venue has been successfully ${venueId ? "updated" : "created"}.`,
+      toast.success(venueId ? "Venue updated" : "Venue created", {
+        description: `Venue has been successfully ${venueId ? "updated" : "created"}.`
       });
       
       // Redirect to venue detail page
@@ -117,10 +116,8 @@ export function VenueForm({ venueId, initialData }: VenueFormProps) {
       router.refresh();
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast({
-        title: "Error",
-        description: `Failed to ${venueId ? "update" : "create"} venue. Please try again.`,
-        variant: "destructive",
+      toast.error("Error", {
+        description: `Failed to ${venueId ? "update" : "create"} venue. Please try again.`
       });
     } finally {
       setIsSubmitting(false);
@@ -197,13 +194,13 @@ export function VenueForm({ venueId, initialData }: VenueFormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
-                        {US_STATES.map((state) => (
-                          <SelectItem key={state} value={state}>
-                            {state}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+  <SelectItem value="none">None</SelectItem>
+  {US_STATES.map((state) => (
+    <SelectItem key={state} value={state}>
+      {state}
+    </SelectItem>
+  ))}
+</SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>

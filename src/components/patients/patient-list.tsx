@@ -43,7 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 // Type for patient data
 interface Patient {
@@ -114,13 +114,24 @@ export function PatientList({ patients, eventId }: PatientListProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [patientToDelete, setPatientToDelete] = useState<string | null>(null);
-  
+  if (!patients || !Array.isArray(patients)) {
+    return (
+      <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30">
+          {/* Add appropriate icon here */}
+        </div>
+        <h3 className="mt-4 text-lg font-medium">No patients found</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          There are no patients for this event yet.
+        </p>
+      </div>
+    );
+  }
   // Filter patients based on search query
   const filteredPatients = patients.filter((patient) => {
     const fullName = `${patient.firstName} ${patient.lastName}`.toLowerCase();
     return fullName.includes(searchQuery.toLowerCase());
   });
-  
   // Handler for patient deletion
   const handleDeletePatient = async () => {
     if (!patientToDelete) return;
@@ -138,19 +149,16 @@ export function PatientList({ patients, eventId }: PatientListProps) {
         throw new Error("Failed to delete patient");
       }
       
-      toast({
-        title: "Patient deleted",
-        description: "The patient record has been successfully deleted.",
+      toast.success("Patient deleted", {
+        description: "The patient record has been successfully deleted."
       });
       
       // Refresh the page
       router.refresh();
     } catch (error) {
       console.error("Error deleting patient:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete patient. Please try again.",
-        variant: "destructive",
+      toast.error("Error", {
+        description: "Failed to delete patient. Please try again."
       });
     } finally {
       setPatientToDelete(null);

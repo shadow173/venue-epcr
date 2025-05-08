@@ -93,7 +93,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { patientId: string } }
 ) {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

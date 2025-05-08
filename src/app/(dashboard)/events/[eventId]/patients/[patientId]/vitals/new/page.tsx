@@ -1,7 +1,7 @@
 // src/app/(dashboard)/events/[eventId]/patients/[patientId]/vitals/new/page.tsx
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
 import { patients, events } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -75,7 +75,7 @@ export default async function NewVitalsPage({
 }: {
   params: { eventId: string; patientId: string }
 }) {
-  const session = await auth();
+  const session = await getServerSession();
   
   // Ensure user is authenticated
   if (!session) {

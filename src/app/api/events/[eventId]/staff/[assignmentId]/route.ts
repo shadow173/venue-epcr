@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { db } from '@/db';
 import { staffAssignments } from '@/db/schema';
 import { logAudit } from '@/lib/audit';
@@ -10,7 +10,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { eventId: string, assignmentId: string } }
 ) {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

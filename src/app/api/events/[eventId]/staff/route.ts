@@ -1,7 +1,7 @@
 // src/app/api/events/[eventId]/staff/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { db } from '@/db';
 import { logAudit } from '@/lib/audit';
 import { sql } from 'drizzle-orm';
@@ -17,7 +17,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { eventId: string } }
 ) {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -78,7 +78,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { eventId: string } }
 ) {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

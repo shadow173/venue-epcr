@@ -1,7 +1,7 @@
 // src/app/api/venues/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { db } from '@/db';
 import { venues } from '@/db/schema';
 import { logAudit } from '@/lib/audit';
@@ -18,7 +18,7 @@ const createVenueSchema = z.object({
 
 // GET - List venues
 export async function GET() {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -38,7 +38,7 @@ export async function GET() {
 
 // POST - Create a new venue (admin only)
 export async function POST(request: NextRequest) {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

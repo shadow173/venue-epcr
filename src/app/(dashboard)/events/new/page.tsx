@@ -1,7 +1,7 @@
 // src/app/(dashboard)/events/new/page.tsx
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth"; // Updated import
 import { db } from "@/db";
 import { venues } from "@/db/schema";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ async function getVenues() {
 }
 
 export default async function NewEventPage() {
-  const session = await auth();
+  const session = await getServerSession(); // Updated to use the new function
   
   // Only admins can create events
   if (!session || session.user.role !== "ADMIN") {

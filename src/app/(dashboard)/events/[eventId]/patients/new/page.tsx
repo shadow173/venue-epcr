@@ -1,7 +1,7 @@
 // src/app/(dashboard)/events/[eventId]/patients/new/page.tsx
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
 import { events, staffAssignments } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -55,7 +55,7 @@ export default async function NewPatientPage({
 }: {
   params: { eventId: string }
 }) {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session) {
     redirect("/auth/signin");

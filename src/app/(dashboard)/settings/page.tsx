@@ -1,7 +1,7 @@
 // src/app/(dashboard)/settings/page.tsx
 import { Suspense } from "react";
 import {  redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -43,7 +43,7 @@ async function getUserProfile(userId: string) {
 
 // User Profile component
 async function UserProfileContent() {
-  const session = await auth();
+  const session = await getServerSession();
   if (!session?.user?.id) return null;
 
   const user = await getUserProfile(session.user.id);
@@ -201,7 +201,7 @@ function ProfileSkeleton() {
 }
 
 export default async function SettingsPage() {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session) {
     redirect("/auth/signin");

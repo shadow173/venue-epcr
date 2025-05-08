@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +37,7 @@ import { TreatmentsList } from "@/components/patients/treatments-list";
 
 // Get patient data
 async function getPatient(patientId: string, eventId: string) {
-  const session = await auth();
+  const session = await getServerSession();
   if (!session?.user?.id) return null;
 
   // For EMTs, check time-based access restrictions
@@ -180,7 +180,7 @@ export default async function PatientDetailPage({
 }: { 
   params: { eventId: string; patientId: string } 
 }) {
-  const session = await auth();
+  const session = await getServerSession();
   if (!session) return null;
   
   const patient = await getPatient(params.patientId, params.eventId);

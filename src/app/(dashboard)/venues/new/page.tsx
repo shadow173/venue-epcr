@@ -1,13 +1,13 @@
 // src/app/(dashboard)/venues/new/page.tsx
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { VenueForm } from "@/components/forms/venue-form";
 
 export default async function NewVenuePage() {
-  const session = await auth();
+  const session = await getServerSession();
   
   // Ensure user is authenticated
   if (!session) {

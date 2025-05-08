@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getServerSession  } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +13,7 @@ import { CalendarDays, MapPin, FilePlus, Users } from "lucide-react";
 
 // Dashboard data fetching component with suspense
 async function EventsList() {
-  const session = await auth();
+  const session = await getServerSession();
   if (!session?.user?.id) return null;
 
   // Fetch events for this user (recent 5 events)
@@ -115,7 +115,7 @@ async function EventsList() {
 }
 
 async function VenuesList() {
-  const session = await auth();
+  const session = await getServerSession();
   if (!session?.user?.id) return null;
 
   // Fetch venues for this user (recent 5 venues)
@@ -212,7 +212,7 @@ function getEventStatusBadge(startDate: Date | string, endDate: Date | string): 
 }
 
 export default async function DashboardPage() {
-  const session = await auth();
+  const session = await getServerSession();
   
   return (
     <div className="animate-fadeIn space-y-8">

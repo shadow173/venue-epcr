@@ -6,7 +6,7 @@ import { logAudit } from '@/lib/audit';
 
 // POST - Handle file uploads
 export async function POST(request: NextRequest) {
-  const session = await auth();
+  const session = await getServerSession();
   
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
