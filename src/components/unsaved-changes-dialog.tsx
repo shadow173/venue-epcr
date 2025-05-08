@@ -1,89 +1,43 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
-import {  useRouter } from "next/navigation";
+import { useNavigation } from "@/components/navigation-context";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-interface NavigationContextType {
-  hasUnsavedChanges: boolean;
-  setHasUnsavedChanges: (value: boolean) => void;
-  showUnsavedChangesDialog: boolean;
-  setShowUnsavedChangesDialog: (value: boolean) => void;
-  attemptedNavigation: string | null;
-  setAttemptedNavigation: (value: string | null) => void;
-  confirmNavigation: () => void;
-  cancelNavigation: () => void;
-}
+export function UnsavedChangesDialog() {
+  const {
+    showUnsavedChangesDialog,
+    confirmNavigation,
+    cancelNavigation,
+  } = useNavigation();
 
-const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
-
-export function NavigationProvider({ children }: { children: React.ReactNode }) {
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
-  const [attemptedNavigation, setAttemptedNavigation] = useState<string | null>(null);
-  
-  const router = useRouter();
-  
-  // Warning function for beforeunload event
-  const warnUser = (e: BeforeUnloadEvent) => {
-    if (hasUnsavedChanges) {
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
-    }
-  };
-  
-  // Set up beforeunload event listener
-  useEffect(() => {
-    if (hasUnsavedChanges) {
-      window.addEventListener("beforeunload", warnUser);
-      return () => {
-        window.removeEventListener("beforeunload", warnUser);
-      };
-    }
-  }, [hasUnsavedChanges]);
-  
-  // Confirm navigation function
-  const confirmNavigation = () => {
-    setHasUnsavedChanges(false);
-    setShowUnsavedChangesDialog(false);
-    
-    if (attemptedNavigation) {
-      router.push(attemptedNavigation);
-    }
-    
-    setAttemptedNavigation(null);
-  };
-  
-  // Cancel navigation function
-  const cancelNavigation = () => {
-    setShowUnsavedChangesDialog(false);
-    setAttemptedNavigation(null);
-  };
-  
   return (
-    <NavigationContext.Provider
-      value={{
-        hasUnsavedChanges,
-        setHasUnsavedChanges,
-        showUnsavedChangesDialog,
-        setShowUnsavedChangesDialog,
-        attemptedNavigation,
-        setAttemptedNavigation,
-        confirmNavigation,
-        cancelNavigation,
-      }}
-    >
-      {children}
-    </NavigationContext.Provider>
+    <AlertDialog open={showUnsavedChangesDialog} onOpenChange={cancelNavigation}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+          <AlertDialogDescription>
+            You have unsaved changes that will be lost if you leave this page.
+            Are you sure you want to continue?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={cancelNavigation}>
+            Stay on this page
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={confirmNavigation}>
+            Leave page
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
-}
-
-export function useNavigation() {
-  const context = useContext(NavigationContext);
-  
-  if (context === undefined) {
-    throw new Error("useNavigation must be used within a NavigationProvider");
-  }
-  
-  return context;
 }

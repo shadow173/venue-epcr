@@ -26,7 +26,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -67,18 +67,14 @@ export default function SignInPage() {
         router.push(callbackUrl);
         router.refresh();
       } else {
-        toast({
-          title: "Authentication Error",
-          description: "Invalid email or password. Please try again.",
-          variant: "destructive",
+        toast.error("Authentication Error", {
+          description: "Invalid email or password. Please try again."
         });
       }
     } catch (error) {
       console.error("Sign in error:", error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
+      toast.error("Error", {
+        description: "An unexpected error occurred. Please try again."
       });
     } finally {
       setIsLoading(false);

@@ -1,34 +1,42 @@
 // src/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getToken } from 'next-auth/jwt';
 
 export async function middleware(request: NextRequest) {
   // Get the pathname
   const path = request.nextUrl.pathname;
   
   // Public paths that don't require authentication
-  const publicPaths = ['/auth/signin', '/auth/error'];
+  const publicPaths = ['/auth/signin', '/auth/error', '/api/auth'];
   
   // Check if the path is public
   const isPublicPath = publicPaths.some((prefix) => 
-    path.startsWith(prefix) || path.startsWith('/_next') || path.startsWith('/api/auth')
+    path.startsWith(prefix) || path.startsWith('/_next') || path.startsWith('/favicon.ico')
   );
   
-  // Get the user session
-  const session = await auth();
+  if (isPublicPath) {
+    return NextResponse.next();
+  }
   
-  // If path requires auth and no session, redirect to login
-  if (!isPublicPath && !session) {
-    return NextResponse.redirect(new URL('/auth/signin', request.url));
+  // Get the token directly using getToken
+  const token = await getToken({ 
+    req: request, 
+    secret: process.env.NEXTAUTH_SECRET 
+  });
+  
+  // If path requires auth and no token, redirect to login
+  if (!token) {
+    const url = new URL('/auth/signin', request.url);
+    url.searchParams.set('callbackUrl', request.url);
+    return NextResponse.redirect(url);
   }
   
   // Admin-only paths check
   const adminOnlyPaths = ['/admin', '/api/admin'];
   
-  if (session && 
-      adminOnlyPaths.some(prefix => path.startsWith(prefix)) && 
-      session.user.role !== 'ADMIN') {
+  if (adminOnlyPaths.some(prefix => path.startsWith(prefix)) && 
+      token.role !== 'ADMIN') {
     return NextResponse.redirect(new URL('/', request.url));
   }
   
@@ -48,9 +56,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all paths except static files, images, or other assets
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.svg$).*)',
+    '/((?!_next/static|_next/image|.*\\.png$|.*\\.jpg$|.*\\.svg$).*)',
   ],
+  runtime: 'nodejs', // Use Node.js runtime
 };

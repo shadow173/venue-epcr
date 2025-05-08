@@ -8,6 +8,7 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   role: varchar("role", { length: 50 }).notNull().default("EMT"),
+  password: varchar("password", { length: 255 }), // Add this line for storing hashed passwords
   certificationEndDate: timestamp("certification_end_date"),
   region: varchar("region", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -1,4 +1,4 @@
-
+// src/app/api/users/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
@@ -34,13 +34,13 @@ export async function GET(
   try {
     const userResult = await db.execute(sql`SELECT * FROM ${users} WHERE ${users.id} = ${params.id} LIMIT 1`);
     const user = userResult.rows[0];
-    if (!user.length) {
+    if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     
     await logAudit(session.user.id, 'READ', 'USER', params.id);
     
-    return NextResponse.json(user[0]);
+    return NextResponse.json(user);
   } catch (error) {
     console.error('Error fetching user:', error);
     return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });
