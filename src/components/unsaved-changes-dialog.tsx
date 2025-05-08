@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import {  useRouter } from "next/navigation";
 
 interface NavigationContextType {
   hasUnsavedChanges: boolean;
@@ -22,7 +22,6 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const [attemptedNavigation, setAttemptedNavigation] = useState<string | null>(null);
   
   const router = useRouter();
-  const pathname = usePathname();
   
   // Warning function for beforeunload event
   const warnUser = (e: BeforeUnloadEvent) => {

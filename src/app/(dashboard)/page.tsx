@@ -221,7 +221,7 @@ export default async function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Welcome, {session?.user?.name}</h1>
             <p className="mt-1 text-gray-500 dark:text-gray-400">
-              Here's an overview of your recent events and venues
+              Here&apos;s an overview of your recent events and venues
             </p>
           </div>
           <div className="mt-4 flex space-x-3 md:mt-0">
