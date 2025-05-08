@@ -139,8 +139,6 @@ function VenuesListSkeleton() {
 }
 
 export default async function VenuesPage() {
-  const session = await getServerSession();
-  const isAdmin = session?.user?.role === "ADMIN";
   
   return (
     <div className="animate-fadeIn space-y-8">

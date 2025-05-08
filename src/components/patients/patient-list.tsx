@@ -258,7 +258,7 @@ export function PatientList({ patients, eventId, canEdit }: PatientListProps) {
                   </TableCell>
                   <TableCell>
                     <Badge 
-                      variant={patient.status === "complete" ? "success" : "secondary"}
+                      variant={patient.status === "complete" ? "default" : "secondary"}
                     >
                       {patient.status || "Incomplete"}
                     </Badge>

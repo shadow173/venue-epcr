@@ -27,7 +27,20 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-
+interface EventWithStatus {
+  id: string;
+  name: string;
+  startDate: Date;
+  endDate: Date;
+  state: string;
+  status: string;
+  venue?: {
+    id: string;
+    name: string;
+    address: string;
+  } | null;
+  patientCount: number;
+}
 // Helper to determine event status
 function getEventStatus(startDate: Date, endDate: Date): string {
   const now = new Date();
@@ -41,13 +54,12 @@ function getEventStatus(startDate: Date, endDate: Date): string {
   }
 }
 
-// Helper to get badge variant for status
-function getStatusBadgeVariant(status: string): "default" | "secondary" | "success" {
+function getStatusBadgeVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
   switch (status) {
     case "Upcoming":
       return "secondary";
     case "In Progress":
-      return "success";
+      return "outline"; // Changed from "success" to "outline"
     case "Completed":
     default:
       return "default";
@@ -196,7 +208,7 @@ async function EventsList() {
 }
 
 // Event card component
-function EventCard({ event }: { event: any }) {
+function EventCard({ event }: { event: EventWithStatus }) {
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-2">

@@ -35,17 +35,18 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
-// Define form schema
+// Define form schema - make all fields explicitly required/optional
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   dob: z.date({
     required_error: "Date of birth is required",
   }),
-  alcoholInvolved: z.boolean().default(false),
+  alcoholInvolved: z.boolean(),
   triageTag: z.string().optional(),
 });
 
+// Define our form values type
 type FormValues = z.infer<typeof formSchema>;
 
 interface PatientDetailsFormProps {
@@ -63,12 +64,13 @@ interface PatientDetailsFormProps {
   eventState: string;
 }
 
-export function PatientDetailsForm({ patient, canEdit, eventState }: PatientDetailsFormProps) {
+export function PatientDetailsForm({ patient, canEdit }: PatientDetailsFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(patient.fileAttachmentUrl);
   
+  // Explicitly type the form
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -80,7 +82,8 @@ export function PatientDetailsForm({ patient, canEdit, eventState }: PatientDeta
     },
   });
   
-  async function onSubmit(values: FormValues) {
+  // Define the submit handler
+  const onSubmit = form.handleSubmit(async (values: FormValues) => {
     if (!canEdit) return;
     
     setIsSubmitting(true);
@@ -124,7 +127,7 @@ export function PatientDetailsForm({ patient, canEdit, eventState }: PatientDeta
     } finally {
       setIsSubmitting(false);
     }
-  }
+  });
   
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,7 +147,7 @@ export function PatientDetailsForm({ patient, canEdit, eventState }: PatientDeta
         <CardTitle>Patient Information</CardTitle>
       </CardHeader>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form onSubmit={onSubmit}>
           <CardContent className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
               <FormField

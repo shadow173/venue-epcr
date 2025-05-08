@@ -28,7 +28,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -179,7 +178,7 @@ export function StaffAssignmentForm({ eventId, users }: StaffAssignmentFormProps
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  Select a predefined role or choose "Other" to enter a custom role
+                  Select a predefined role or choose &quot;Other&quot; to enter a custom role
                 </FormDescription>
               </FormItem>
               

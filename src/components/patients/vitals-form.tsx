@@ -25,7 +25,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
+import { toast, Toaster } from "sonner";
 import { Slider } from "@/components/ui/slider";
 
 // Define form schema with Zod
@@ -38,7 +38,7 @@ const formSchema = z.object({
   glucoseLevel: z.number().min(0).max(1000).optional(),
   painScale: z.number().min(0).max(10).optional(),
   notes: z.string().optional(),
-  timestamp: z.date().default(() => new Date()),
+  timestamp: z.date(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -50,21 +50,20 @@ interface VitalsFormProps {
   initialData?: Partial<FormValues>;
 }
 
-export function VitalsForm({ patientId, eventId, vitalId, initialData }: VitalsFormProps) {
+export function VitalsForm({ patientId, eventId, initialData }: VitalsFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const defaultValues: Partial<FormValues> = {
-    bloodPressure: "",
-    heartRate: undefined,
-    respiratoryRate: undefined,
-    oxygenSaturation: undefined,
-    temperature: undefined,
-    glucoseLevel: undefined,
-    painScale: 0,
-    notes: "",
-    timestamp: new Date(),
-    ...initialData,
+  const defaultValues: FormValues = {
+    bloodPressure: initialData?.bloodPressure ?? "",
+    heartRate: initialData?.heartRate,
+    respiratoryRate: initialData?.respiratoryRate,
+    oxygenSaturation: initialData?.oxygenSaturation,
+    temperature: initialData?.temperature,
+    glucoseLevel: initialData?.glucoseLevel,
+    painScale: initialData?.painScale ?? 0,
+    notes: initialData?.notes ?? "",
+    timestamp: initialData?.timestamp ?? new Date(),
   };
   
   const form = useForm<FormValues>({
@@ -93,9 +92,8 @@ export function VitalsForm({ patientId, eventId, vitalId, initialData }: VitalsF
         throw new Error(`Failed to record vitals`);
       }
       
-      toast({
-        title: "Vitals recorded",
-        description: "Patient vitals have been successfully recorded.",
+      toast.success("Vitals recorded", {
+        description: "Patient vitals have been successfully recorded."
       });
       
       // Redirect to patient detail page
@@ -103,10 +101,8 @@ export function VitalsForm({ patientId, eventId, vitalId, initialData }: VitalsF
       router.refresh();
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast({
-        title: "Error",
-        description: "Failed to record vitals. Please try again.",
-        variant: "destructive",
+      toast.error("Error", {
+        description: "Failed to record vitals. Please try again."
       });
     } finally {
       setIsSubmitting(false);
@@ -307,6 +303,7 @@ export function VitalsForm({ patientId, eventId, vitalId, initialData }: VitalsF
           </CardFooter>
         </form>
       </Form>
+      <Toaster />
     </Card>
   );
 }

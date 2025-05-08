@@ -32,6 +32,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface ProfileFormProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any; // Using 'any' for simplicity since we don't have the full user type here
 }
 

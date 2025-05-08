@@ -2,7 +2,7 @@
 // src/app/api/venues/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { get } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { db } from '@/db';
 import { venues } from '@/db/schema';
 import { logAudit } from '@/lib/audit';

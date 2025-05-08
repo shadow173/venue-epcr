@@ -105,7 +105,7 @@ export default function PatientsPage() {
             const eventPatients = await response.json();
             
             // Add event name to each patient
-            const patientsWithEvent = eventPatients.map((patient: any) => ({
+            const patientsWithEvent = eventPatients.map((patient: Omit<Patient, 'eventName'>) => ({
               ...patient,
               eventName: event.name
             }));
@@ -383,11 +383,11 @@ export default function PatientsPage() {
                           {format(new Date(patient.createdAt), "MMM d, yyyy")}
                         </TableCell>
                         <TableCell>
-                          <Badge 
-                            variant={patient.status === "complete" ? "success" : "secondary"}
-                          >
-                            {patient.status || "Incomplete"}
-                          </Badge>
+                        <Badge 
+  variant={patient.status === "complete" ? "default" : "secondary"}
+>
+  {patient.status || "Incomplete"}
+</Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <Button

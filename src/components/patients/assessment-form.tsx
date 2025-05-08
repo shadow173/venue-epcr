@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
+import { toast, Toaster } from "sonner";
 
 // Define form schema
 const formSchema = z.object({
@@ -66,18 +66,15 @@ export function AssessmentForm({ assessment, canEdit }: AssessmentFormProps) {
         throw new Error("Failed to update assessment");
       }
       
-      toast({
-        title: "Assessment updated",
-        description: "Chief complaint has been saved successfully.",
+      toast.success("Assessment updated", {
+        description: "Chief complaint has been saved successfully."
       });
       
       router.refresh();
     } catch (error) {
       console.error("Error updating assessment:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update assessment. Please try again.",
-        variant: "destructive",
+      toast.error("Error", {
+        description: "Failed to update assessment. Please try again."
       });
     } finally {
       setIsSubmitting(false);
@@ -122,6 +119,7 @@ export function AssessmentForm({ assessment, canEdit }: AssessmentFormProps) {
           )}
         </form>
       </Form>
+      <Toaster />
     </Card>
   );
 }

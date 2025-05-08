@@ -4,12 +4,11 @@ import Link from "next/link";
 import { getServerSession } from "@/lib/auth";
 import { db } from "@/db";
 import { events, venues, patients, staffAssignments } from "@/db/schema";
-import { eq, and, count, gte, lt, not } from "drizzle-orm";
+import { eq, and, count, } from "drizzle-orm";
 import { format } from "date-fns";
 import { 
   Calendar,
   FileText, 
-  Users, 
   MapPin,
   PlusCircle,
   ArrowRight,
@@ -115,7 +114,7 @@ async function DashboardContent() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="mt-1 text-gray-500 dark:text-gray-400">
-          Welcome {session.user.name || session.user.email}. Here's an overview of your events and activity.
+          Welcome {session.user.name || session.user.email}. Here&apos;s an overview of your events and activity.
         </p>
       </div>
       
@@ -275,8 +274,8 @@ async function DashboardContent() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center">
                         <h3 className="truncate text-base font-medium text-green-800 dark:text-green-300">{event.name}</h3>
-                        <Badge variant="success" className="ml-2">Active</Badge>
-                      </div>
+                        <Badge variant="secondary" className="ml-2">Active</Badge>
+                        </div>
                       <div className="mt-1 flex items-center text-sm text-green-700 dark:text-green-400">
                         <Clock className="mr-1 h-3 w-3" />
                         <span>

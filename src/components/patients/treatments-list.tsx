@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { format } from "date-fns";
-import { Clock, Clipboard, PlusCircle } from "lucide-react";
+import { Clock, Clipboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -28,7 +27,7 @@ interface TreatmentsListProps {
   canEdit: boolean;
 }
 
-export function TreatmentsList({ treatments, patientId, canEdit }: TreatmentsListProps) {
+export function TreatmentsList({ treatments,}: TreatmentsListProps) {
   const [expandedNotes, setExpandedNotes] = useState<string | null>(null);
   
   const toggleNotes = (treatmentId: string) => {

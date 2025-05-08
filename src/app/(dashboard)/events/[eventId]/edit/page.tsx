@@ -50,15 +50,13 @@ async function getEvent(eventId: string) {
   }
 }
 
-interface EditEventPageProps {
-  params: {
-    eventId: string;
-  };
-}
-
-export default async function EditEventPage({ params }: EditEventPageProps) {
-  // Extract eventId from params first
-  const { eventId } = params;
+export default async function EditEventPage({ 
+  params 
+}: { 
+  params: Promise<{ eventId: string }> 
+}) {
+  // Extract eventId from params - await the Promise
+  const { eventId } = await params;
 
   const session = await getServerSession();
   

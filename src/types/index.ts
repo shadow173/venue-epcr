@@ -1,5 +1,4 @@
 // src/types/index.ts
-import { inferRouterOutputs, inferRouterInputs } from '@trpc/server';
 import { z } from 'zod';
 
 // User types

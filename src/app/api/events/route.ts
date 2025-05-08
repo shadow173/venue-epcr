@@ -19,7 +19,7 @@ const createEventSchema = z.object({
 });
 
 // GET - Get all events (for admin or based on user's access)
-export async function GET(request: NextRequest) {
+export async function GET() {
   const session = await getServerSession();
   
   if (!session) {

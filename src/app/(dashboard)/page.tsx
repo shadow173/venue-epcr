@@ -196,14 +196,14 @@ function getEventStatus(startDate: Date | string, endDate: Date | string): strin
   return "Completed";
 }
 
-function getEventStatusBadge(startDate: Date | string, endDate: Date | string): "default" | "secondary" | "success" {
+function getEventStatusBadge(startDate: Date | string, endDate: Date | string): "default" | "secondary" | "destructive" | "outline" {
   const status = getEventStatus(startDate, endDate);
   
   switch (status) {
     case "Upcoming":
       return "secondary";
     case "In Progress":
-      return "success";
+      return "outline";  // Changed from "success" to "outline"
     case "Completed":
       return "default";
     default:

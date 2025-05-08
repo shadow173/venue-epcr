@@ -428,8 +428,12 @@ export default async function EventDetailPage({ params }: { params: { eventId: s
                 )}
               </div>
             ) : (
-              <PatientList 
-                patients={patientsList} 
+                <PatientList 
+                patients={patientsList.map(patient => ({
+                  ...patient,
+                  dob: patient.dob.toISOString(), // Convert Date to string
+                  createdAt: patient.createdAt.toISOString() // Also convert createdAt to string
+                }))} 
                 eventId={event.id} 
                 canEdit={canEdit} 
               />

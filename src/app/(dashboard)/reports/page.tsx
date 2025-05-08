@@ -9,7 +9,7 @@ import {
   Download,
   Search,
   FileText,
-  Calendar,
+  Calendar as CalendarLucide, // Renamed to avoid conflict
   CheckCircle,
   MapPin
 } from "lucide-react";
@@ -27,6 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
@@ -202,7 +203,7 @@ export default function ReportsPage() {
   };
   
   // Handle filter changes
-  const updateFilter = (key: keyof ReportFilters, value: any) => {
+  const updateFilter = (key: keyof ReportFilters, value: string | number | Date | undefined) => {
     setFilters(prev => ({
       ...prev,
       [key]: value,
@@ -547,7 +548,7 @@ export default function ReportsPage() {
                         <TableCell>{patient.eventName}</TableCell>
                         <TableCell>{patient.venueName}</TableCell>
                         <TableCell>
-                          <Badge variant={patient.status === 'complete' ? 'success' : 'secondary'}>
+                          <Badge variant={patient.status === 'complete' ? 'default' : 'secondary'}>
                             {patient.status || 'Incomplete'}
                           </Badge>
                         </TableCell>
@@ -650,7 +651,7 @@ export default function ReportsPage() {
         <Card>
           <CardContent className="flex flex-col items-center pt-6">
             <div className="rounded-full bg-yellow-100 p-3 dark:bg-yellow-900/30">
-              <Calendar className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+              <CalendarLucide className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
             </div>
             <h3 className="mt-3 text-lg font-medium">Events</h3>
             <div className="mt-1 text-3xl font-bold">

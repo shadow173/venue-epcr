@@ -87,18 +87,17 @@ function getEventStatus(startDate: Date | string, endDate: Date | string): strin
 }
 
 // Helper to get badge variant based on status
-function getEventStatusBadge(status: string): "default" | "secondary" | "success" {
+function getEventStatusBadge(status: string): "default" | "secondary" | "outline" | "destructive" {
   switch (status) {
     case "Upcoming":
       return "secondary";
     case "In Progress":
-      return "success";
+      return "outline"; // Changed from "success" to "outline"
     case "Completed":
     default:
       return "default";
   }
 }
-
 // Venue information component
 async function VenueInfo({ venueId }: { venueId: string }) {
   const venue = await getVenue(venueId);

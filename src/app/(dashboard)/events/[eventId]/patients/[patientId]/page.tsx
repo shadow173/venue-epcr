@@ -17,7 +17,7 @@ import {
   users,
   staffAssignments
 } from "@/db/schema";
-import { eq, and, desc, or } from "drizzle-orm";
+import { eq, and, desc, or, gte, lte } from "drizzle-orm";
 import { format } from "date-fns";
 import { 
   ArrowLeft, 
@@ -74,11 +74,11 @@ async function getPatient(patientId: string, eventId: string, userId: string, us
         eq(patients.eventId, eventId),
         or(
           // Created in last 24 hours
-          patients.createdAt >= yesterday.toISOString(),
+          gte(patients.createdAt, yesterday),
           // Created on same day as event
           and(
-            patients.createdAt >= yesterday.toISOString(),
-            patients.createdAt <= now.toISOString()
+            gte(patients.createdAt, yesterday),
+            lte(patients.createdAt, now)
           )
         )
       )
@@ -136,17 +136,26 @@ async function getPatient(patientId: string, eventId: string, userId: string, us
 }
 
 // Get vitals for this patient
-async function getPatientVitals(assessmentId: string | null) {
+async function getPatientVitals(assessmentId: string | null | undefined) {
   if (!assessmentId) return [];
   
-  return await db.select()
+  const patientVitals = await db.select()
     .from(vitals)
     .where(eq(vitals.assessmentId, assessmentId))
     .orderBy(desc(vitals.timestamp));
+
+  // Convert temperature string to number if needed
+  return patientVitals.map(vital => ({
+    ...vital,
+    // If temperature is a string, try to convert it to a number or set to null
+    temperature: vital.temperature ? 
+      (typeof vital.temperature === 'string' ? parseFloat(vital.temperature) : vital.temperature) 
+      : null
+  }));
 }
 
 // Get treatments for this patient
-async function getPatientTreatments(assessmentId: string | null) {
+async function getPatientTreatments(assessmentId: string | null | undefined) {
   if (!assessmentId) return [];
   
   return await db.select()
@@ -247,7 +256,7 @@ export default async function PatientDetailPage({ params }: PatientDetailPagePro
               </Badge>
             )}
             
-            <Badge variant={patient.status === "complete" ? "success" : "secondary"}>
+            <Badge variant={patient.status === "complete" ? "default" : "secondary"}>
               {patient.status === "complete" ? "Completed" : "In Progress"}
             </Badge>
           </div>
@@ -314,7 +323,16 @@ export default async function PatientDetailPage({ params }: PatientDetailPagePro
         
         <TabsContent value="patient" className="mt-6 space-y-6">
           <PatientDetailsForm 
-            patient={patient} 
+            patient={{
+              id: patient.id,
+              eventId: patient.eventId,
+              firstName: patient.firstName,
+              lastName: patient.lastName,
+              dob: patient.dob,
+              alcoholInvolved: patient.alcoholInvolved ?? false, // Handle null case
+              triageTag: patient.triageTag,
+              fileAttachmentUrl: patient.fileAttachmentUrl
+            }}
             canEdit={canEdit} 
             eventState={patient.eventState} 
           />
@@ -367,7 +385,7 @@ export default async function PatientDetailPage({ params }: PatientDetailPagePro
           
           <AssessmentForm 
             assessment={{
-              id: patient.assessmentId,
+              id: patient.assessmentId || undefined,
               patientId: patient.id,
               chiefComplaint: patient.chiefComplaint,
             }}
@@ -378,7 +396,7 @@ export default async function PatientDetailPage({ params }: PatientDetailPagePro
         <TabsContent value="narrative" className="mt-6">
           <NarrativeForm
             assessment={{
-              id: patient.assessmentId,
+              id: patient.assessmentId || undefined,
               patientId: patient.id,
               narrative: patient.narrative,
             }}
@@ -389,15 +407,15 @@ export default async function PatientDetailPage({ params }: PatientDetailPagePro
         <TabsContent value="complete" className="mt-6">
           <CompletionForm
             assessment={{
-              id: patient.assessmentId,
+              id: patient.assessmentId || undefined,
               patientId: patient.id,
               disposition: patient.disposition,
               hospitalName: patient.hospitalName,
               emsUnit: patient.emsUnit,
               patientSignature: patient.patientSignature,
-              patientSignatureTimestamp: patient.patientSignatureTimestamp ? new Date(patient.patientSignatureTimestamp) : null,
+              patientSignatureTimestamp: patient.patientSignatureTimestamp ? new Date(patient.patientSignatureTimestamp) : undefined,
               emtSignature: patient.emtSignature,
-              emtSignatureTimestamp: patient.emtSignatureTimestamp ? new Date(patient.emtSignatureTimestamp) : null,
+              emtSignatureTimestamp: patient.emtSignatureTimestamp ? new Date(patient.emtSignatureTimestamp) : undefined,
               status: patient.status,
             }}
             canEdit={canEdit}

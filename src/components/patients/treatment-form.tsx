@@ -32,13 +32,11 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
+import { toast, Toaster } from "sonner";
 
 // Common treatment options
 const COMMON_TREATMENTS = [
   "Oxygen Administration",
-  "IV Access",
-  "IV Fluids",
   "Medication Administration",
   "Wound Care",
   "Bandaging",
@@ -52,9 +50,10 @@ const COMMON_TREATMENTS = [
 
 // Define form schema with Zod
 const formSchema = z.object({
+  treatmentType: z.string().min(1, "Treatment type is required"),
   name: z.string().min(1, "Treatment name is required"),
   notes: z.string().optional(),
-  timestamp: z.date().default(() => new Date()),
+  timestamp: z.coerce.date(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -66,16 +65,16 @@ interface TreatmentFormProps {
   initialData?: Partial<FormValues>;
 }
 
-export function TreatmentForm({ patientId, eventId, treatmentId, initialData }: TreatmentFormProps) {
+export function TreatmentForm({ patientId, eventId, initialData }: TreatmentFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [customTreatment, setCustomTreatment] = useState(false);
+  const [customTreatment, setCustomTreatment] = useState(initialData?.treatmentType === "Other");
   
-  const defaultValues: Partial<FormValues> = {
-    name: "",
-    notes: "",
-    timestamp: new Date(),
-    ...initialData,
+  const defaultValues: FormValues = {
+    treatmentType: initialData?.treatmentType || "",
+    name: initialData?.name || "",
+    notes: initialData?.notes || "",
+    timestamp: initialData?.timestamp || new Date(),
   };
   
   const form = useForm<FormValues>({
@@ -83,21 +82,28 @@ export function TreatmentForm({ patientId, eventId, treatmentId, initialData }: 
     defaultValues,
   });
   
-  // Handle treatment selection
-  const handleTreatmentSelect = (value: string) => {
-    if (value === "Other") {
+  // Watch for treatment type changes
+  const treatmentType = form.watch("treatmentType");
+  
+  // Update customTreatment state when treatment type changes
+  useState(() => {
+    if (treatmentType === "Other") {
       setCustomTreatment(true);
-      form.setValue("name", "");
-    } else {
+    } else if (treatmentType && treatmentType !== "Other") {
       setCustomTreatment(false);
-      form.setValue("name", value);
+      form.setValue("name", treatmentType);
     }
-  };
+  });
   
   async function onSubmit(values: FormValues) {
     setIsSubmitting(true);
     
     try {
+      // Set name to treatment type if not custom
+      if (values.treatmentType !== "Other") {
+        values.name = values.treatmentType;
+      }
+      
       // Endpoint is always POST for new treatments
       const endpoint = `/api/patients/${patientId}/treatments`;
       
@@ -107,7 +113,11 @@ export function TreatmentForm({ patientId, eventId, treatmentId, initialData }: 
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          name: values.name,
+          notes: values.notes,
+          timestamp: values.timestamp
+        }),
         credentials: "include",
       });
       
@@ -115,9 +125,8 @@ export function TreatmentForm({ patientId, eventId, treatmentId, initialData }: 
         throw new Error(`Failed to record treatment`);
       }
       
-      toast({
-        title: "Treatment recorded",
-        description: "Patient treatment has been successfully recorded.",
+      toast.success("Treatment recorded", {
+        description: "Patient treatment has been successfully recorded."
       });
       
       // Redirect to patient detail page
@@ -125,10 +134,8 @@ export function TreatmentForm({ patientId, eventId, treatmentId, initialData }: 
       router.refresh();
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast({
-        title: "Error",
-        description: "Failed to record treatment. Please try again.",
-        variant: "destructive",
+      toast.error("Error", {
+        description: "Failed to record treatment. Please try again."
       });
     } finally {
       setIsSubmitting(false);
@@ -147,21 +154,42 @@ export function TreatmentForm({ patientId, eventId, treatmentId, initialData }: 
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-6">
             <div className="space-y-4">
-              <div>
-                <FormLabel>Treatment Type</FormLabel>
-                <Select onValueChange={handleTreatmentSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select treatment" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COMMON_TREATMENTS.map((treatment) => (
-                      <SelectItem key={treatment} value={treatment}>
-                        {treatment}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <FormField
+                control={form.control}
+                name="treatmentType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Treatment Type</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        if (value === "Other") {
+                          setCustomTreatment(true);
+                          form.setValue("name", "");
+                        } else {
+                          setCustomTreatment(false);
+                          form.setValue("name", value);
+                        }
+                      }}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select treatment" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {COMMON_TREATMENTS.map((treatment) => (
+                          <SelectItem key={treatment} value={treatment}>
+                            {treatment}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               {customTreatment && (
                 <FormField
@@ -221,6 +249,7 @@ export function TreatmentForm({ patientId, eventId, treatmentId, initialData }: 
           </CardFooter>
         </form>
       </Form>
+      <Toaster />
     </Card>
   );
 }

@@ -1,11 +1,12 @@
 // src/app/api/users/create/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { ge } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { hashPassword } from '@/lib/auth/password';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
+
 const createUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(2),
@@ -17,7 +18,7 @@ const createUserSchema = z.object({
 
 export async function POST(request: NextRequest) {
   // Only admins can create users
-  const session = await auth(request);
+  const session = await getServerSession(); // Changed from auth(request) to getServerSession()
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

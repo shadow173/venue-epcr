@@ -1,16 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { format } from "date-fns";
 import { 
   Clock, 
   ThermometerIcon, 
   Activity, 
-  Lungs, 
+  Stethoscope, 
   Droplet, 
   Ruler, 
-  AlertCircle 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,7 +40,7 @@ interface VitalsListProps {
   canEdit: boolean;
 }
 
-export function VitalsList({ vitals, patientId, canEdit }: VitalsListProps) {
+export function VitalsList({ vitals }: VitalsListProps) {
   const [expandedNotes, setExpandedNotes] = useState<string | null>(null);
   
   const toggleNotes = (vitalId: string) => {
@@ -154,7 +152,7 @@ export function VitalsList({ vitals, patientId, canEdit }: VitalsListProps) {
                         </div>
                       </div>
                       <div className="flex items-center">
-                        <Lungs className="mr-2 h-4 w-4 text-gray-400" />
+                        <Stethoscope className="mr-2 h-4 w-4 text-gray-400" />
                         <div>
                           <div className="text-sm font-medium">Respiratory Rate</div>
                           <div className="text-sm">{vital.respiratoryRate ? `${vital.respiratoryRate} BPM` : "Not recorded"}</div>

@@ -174,7 +174,7 @@ export async function PATCH(
     const validatedData = updateEventSchema.parse(body);
     
     // Create update data object with only the fields provided
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, string | Date | null> = {
       updatedAt: new Date(),
     };
     

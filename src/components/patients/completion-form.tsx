@@ -31,18 +31,18 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
+import { toast, Toaster } from "sonner";
 import { format } from "date-fns";
 import { AlertCircle } from "lucide-react";
 
-// Define form schema
+// Define the form schema
 const formSchema = z.object({
   disposition: z.enum(["transported", "rma", "eloped"]).optional(),
   hospitalName: z.string().optional(),
   emsUnit: z.string().optional(),
   patientSignature: z.string().optional(),
   emtSignature: z.string().optional(),
-  status: z.enum(["incomplete", "complete"]).default("incomplete"),
+  status: z.enum(["incomplete", "complete"]).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -64,7 +64,7 @@ interface CompletionFormProps {
   isAdmin: boolean;
 }
 
-const dispositionText = {
+const dispositionText: Record<string, string> = {
   transported: "Patient was transported to a medical facility by ambulance.",
   rma: "Patient refused medical assistance against medical advice.",
   eloped: "Patient left the scene without signing or giving consent.",
@@ -78,34 +78,49 @@ export function CompletionForm({ assessment, canEdit, isAdmin }: CompletionFormP
   
   const isComplete = assessment.status === "complete";
   
+  // Ensure we have valid enum values for the form
+  const getValidDisposition = () => {
+    if (assessment.disposition && ["transported", "rma", "eloped"].includes(assessment.disposition)) {
+      return assessment.disposition as "transported" | "rma" | "eloped";
+    }
+    return undefined;
+  };
+
+  const getValidStatus = () => {
+    if (assessment.status && ["incomplete", "complete"].includes(assessment.status)) {
+      return assessment.status as "incomplete" | "complete";
+    }
+    return "incomplete" as const;
+  };
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      disposition: assessment.disposition as any || undefined,
+      disposition: getValidDisposition(),
       hospitalName: assessment.hospitalName || "",
       emsUnit: assessment.emsUnit || "",
       patientSignature: assessment.patientSignature || "",
       emtSignature: assessment.emtSignature || "",
-      status: assessment.status as any || "incomplete",
+      status: getValidStatus(),
     },
   });
   
   const watchDisposition = form.watch("disposition");
   
-  // Simplified signature pad - in a real app, use a library
-  const getSignature = (ref: React.RefObject<HTMLDivElement>) => {
+  // Signature pad handler - simplified for example
+  const getSignature = () => {
     // In a real app, use a proper signature pad library
     // Here just returning timestamp as "signature" for demo
     return new Date().toISOString();
   };
   
   const handlePatientSign = () => {
-    const signature = getSignature(patientSignaturePadRef);
+    const signature = getSignature();
     form.setValue("patientSignature", signature);
   };
   
   const handleEmtSign = () => {
-    const signature = getSignature(emtSignaturePadRef);
+    const signature = getSignature();
     form.setValue("emtSignature", signature);
   };
   
@@ -130,20 +145,16 @@ export function CompletionForm({ assessment, canEdit, isAdmin }: CompletionFormP
     }
     
     if (values.disposition === "rma" && !values.patientSignature) {
-      toast({
-        title: "Patient signature required",
-        description: "Patient must sign for a refusal of medical assistance (RMA).",
-        variant: "destructive",
+      toast.error("Patient signature required", {
+        description: "Patient must sign for a refusal of medical assistance (RMA)."
       });
       return;
     }
     
     // For complete status, EMT signature is required
     if (values.status === "complete" && !values.emtSignature) {
-      toast({
-        title: "EMT signature required",
-        description: "EMT must sign to complete the report.",
-        variant: "destructive",
+      toast.error("EMT signature required", {
+        description: "EMT must sign to complete the report."
       });
       return;
     }
@@ -164,20 +175,17 @@ export function CompletionForm({ assessment, canEdit, isAdmin }: CompletionFormP
         throw new Error("Failed to update completion status");
       }
       
-      toast({
-        title: values.status === "complete" ? "Report completed" : "Information saved",
+      toast.success(values.status === "complete" ? "Report completed" : "Information saved", {
         description: values.status === "complete" 
           ? "The patient report has been marked as complete." 
-          : "Disposition information has been saved successfully.",
+          : "Disposition information has been saved successfully."
       });
       
       router.refresh();
     } catch (error) {
       console.error("Error updating completion status:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update completion status. Please try again.",
-        variant: "destructive",
+      toast.error("Error", {
+        description: "Failed to update completion status. Please try again."
       });
     } finally {
       setIsSubmitting(false);
@@ -238,7 +246,7 @@ export function CompletionForm({ assessment, canEdit, isAdmin }: CompletionFormP
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    {field.value ? dispositionText[field.value as keyof typeof dispositionText] : "Select the outcome of this patient encounter."}
+                    {field.value ? dispositionText[field.value] : "Select the outcome of this patient encounter."}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -428,6 +436,7 @@ export function CompletionForm({ assessment, canEdit, isAdmin }: CompletionFormP
           )}
         </form>
       </Form>
+      <Toaster />
     </Card>
   );
 }

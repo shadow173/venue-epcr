@@ -1,7 +1,7 @@
 // src/app/api/patients/[patientId]/vitals/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { ge } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { db } from '@/db';
 import { vitals, assessments, patients, events, staffAssignments } from '@/db/schema';
 import { logAudit } from '@/lib/audit';
