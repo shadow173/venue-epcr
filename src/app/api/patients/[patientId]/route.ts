@@ -95,14 +95,15 @@ async function userHasPatientAccess(userId: string, userRole: string, eventId: s
 // GET - Get a specific patient with assessment data
 export async function GET(
   request: NextRequest,
-  { params }: { params: { eventId: string, patientId: string } }
+  props: { params: Promise<{ eventId: string, patientId: string }> }
 ) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Check access
     const hasAccess = await userHasPatientAccess(
@@ -194,14 +195,15 @@ export async function GET(
 // PATCH - Update patient information
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { eventId: string, patientId: string } }
+  props: { params: Promise<{ eventId: string, patientId: string }> }
 ) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Check access
     const hasAccess = await userHasPatientAccess(
@@ -299,14 +301,15 @@ export async function PATCH(
 // DELETE - Delete a patient (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { eventId: string, patientId: string } }
+  props: { params: Promise<{ eventId: string, patientId: string }> }
 ) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Get patient record to check for S3 file
     const patientRecord = await db.select({

@@ -14,16 +14,14 @@ const assignStaffSchema = z.object({
 });
 
 // GET - List staff assigned to an event
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { eventId: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ eventId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Extract eventId from params
     const { eventId } = params;
@@ -73,16 +71,14 @@ export async function GET(
 }
 
 // POST - Assign staff to an event (admin only)
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { eventId: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ eventId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Extract eventId from params
     const { eventId } = params;

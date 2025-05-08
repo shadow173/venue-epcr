@@ -209,14 +209,15 @@ async function UpcomingEvents({ venueId }: { venueId: string }) {
     </div>
   );
 }
-export default async function VenueDetailPage({
-  params
-}: {
-  params: { venueId: string }
-}) {
+export default async function VenueDetailPage(
+  props: {
+    params: Promise<{ venueId: string }>
+  }
+) {
+  const params = await props.params;
   const session = await getServerSession();
   if (!session) return null;
-  
+
   // Extract the venueId parameter first
   const venueId = params.venueId;
 

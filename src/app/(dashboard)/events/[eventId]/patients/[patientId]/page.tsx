@@ -198,37 +198,38 @@ function getTriageTagClass(tag: string | null): string {
 }
 
 interface PatientDetailPageProps {
-  params: {
+  params: Promise<{
     eventId: string;
     patientId: string;
-  };
+  }>;
 }
 
-export default async function PatientDetailPage({ params }: PatientDetailPageProps) {
+export default async function PatientDetailPage(props: PatientDetailPageProps) {
+  const params = await props.params;
   // Extract params
   const { eventId, patientId } = params;
-  
+
   const session = await getServerSession();
   if (!session) {
     redirect("/auth/signin");
   }
-  
+
   const patient = await getPatient(patientId, eventId, session.user.id, session.user.role);
-  
+
   // If patient not found or user doesn't have access
   if (!patient) {
     notFound();
   }
-  
+
   const [patientVitals, patientTreatments] = await Promise.all([
     getPatientVitals(patient.assessmentId),
     getPatientTreatments(patient.assessmentId),
   ]);
-  
+
   const isComplete = patient.status === "complete";
   const isAdmin = session.user.role === "ADMIN";
   const canEdit = !isComplete || isAdmin;
-  
+
   return (
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center gap-4">

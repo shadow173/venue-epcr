@@ -51,32 +51,33 @@ async function checkEventAccess(eventId: string, userId: string, userRole: strin
 }
 
 interface NewPatientPageProps {
-  params: {
+  params: Promise<{
     eventId: string;
-  };
+  }>;
 }
 
-export default async function NewPatientPage({ params }: NewPatientPageProps) {
+export default async function NewPatientPage(props: NewPatientPageProps) {
+  const params = await props.params;
   // Extract eventId from params
   const { eventId } = params;
-  
+
   const session = await getServerSession();
-  
+
   if (!session) {
     redirect("/auth/signin");
   }
-  
+
   // Check event access
   const event = await checkEventAccess(
     eventId,
     session.user.id,
     session.user.role
   );
-  
+
   if (!event) {
     notFound();
   }
-  
+
   return (
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-start">

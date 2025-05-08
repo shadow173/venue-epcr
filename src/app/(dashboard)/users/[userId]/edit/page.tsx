@@ -31,37 +31,38 @@ async function getUser(userId: string) {
   }
 }
 
-export default async function EditUserPage({
-  params,
-}: {
-  params: { userId: string }
-}) {
+export default async function EditUserPage(
+  props: {
+    params: Promise<{ userId: string }>
+  }
+) {
+  const params = await props.params;
   // Get the current session
   const session = await getServerSession();
-  
+
   // Only admins can edit users (or users can edit themselves)
   if (!session) {
     redirect("/auth/signin");
   }
-  
+
   // Extract userId from params
   const { userId } = params;
-  
+
   // Check if user is authorized to edit this user
   const isAdmin = session.user.role === "ADMIN";
   const isSelf = session.user.id === userId;
-  
+
   if (!isAdmin && !isSelf) {
     redirect("/");
   }
-  
+
   // Fetch user data
   const user = await getUser(userId);
-  
+
   if (!user) {
     notFound();
   }
-  
+
   return (
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-start">

@@ -16,21 +16,19 @@ const updateUserSchema = z.object({
 });
 
 // GET - Get a specific user
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   // EMTs can only view their own profile, admins can view any
   if (session.user.role !== 'ADMIN' && session.user.id !== params.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  
+
   try {
     const userResult = await db.execute(sql`SELECT * FROM ${users} WHERE ${users.id} = ${params.id} LIMIT 1`);
     const user = userResult.rows[0];
@@ -48,21 +46,19 @@ export async function GET(
 }
 
 // PATCH - Update a user
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   // EMTs can only update their own profile, admins can update any
   if (session.user.role !== 'ADMIN' && session.user.id !== params.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  
+
   try {
     const body = await request.json();
     const validatedData = updateUserSchema.parse(body);
@@ -99,16 +95,14 @@ export async function PATCH(
 }
 
 // DELETE - Delete a user (admin only)
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     const deletedUser = await db.delete(users)
       .where(eq(users.id, params.id))

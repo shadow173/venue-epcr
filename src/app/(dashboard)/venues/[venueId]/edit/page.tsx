@@ -32,29 +32,30 @@ async function getVenue(venueId: string) {
   }
 }
 
-export default async function EditVenuePage({
-  params,
-}: {
-  params: { venueId: string }
-}) {
+export default async function EditVenuePage(
+  props: {
+    params: Promise<{ venueId: string }>
+  }
+) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   // Ensure user is authenticated
   if (!session) {
     redirect("/auth/signin");
   }
-  
+
   // Only admins can edit venues
   if (session.user.role !== "ADMIN") {
     redirect("/venues");
   }
-  
+
   const venue = await getVenue(params.venueId);
-  
+
   if (!venue) {
     notFound();
   }
-  
+
   return (
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-start">
@@ -68,7 +69,16 @@ export default async function EditVenuePage({
       </div>
       
       <div className="grid gap-6">
-        <VenueForm venueId={params.venueId} initialData={venue} />
+        <VenueForm
+          venueId={params.venueId}
+          initialData={{
+            ...venue,
+            city: venue.city ?? undefined,
+            state: venue.state ?? undefined,
+            zipCode: venue.zipCode ?? undefined,
+            notes: venue.notes ?? undefined
+          }}
+        />
       </div>
     </div>
   );

@@ -58,25 +58,20 @@ interface PatientListProps {
 
 export function PatientList({ patients, eventId, canEdit }: PatientListProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [triageFilter, setTriageFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [triageFilter, setTriageFilter] = useState("all");
   
-  // Apply filters to the patient list
   const filteredPatients = patients.filter((patient) => {
-    // Apply search filter (case insensitive)
     const searchMatch = searchQuery === "" || 
       `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Apply status filter
-    const statusMatch = statusFilter === "" || patient.status === statusFilter;
+    const statusMatch = statusFilter === "all" || patient.status === statusFilter;
     
-    // Apply triage filter
-    const triageMatch = triageFilter === "" || patient.triageTag === triageFilter;
+    const triageMatch = triageFilter === "all" || patient.triageTag === triageFilter;
     
     return searchMatch && statusMatch && triageMatch;
   });
   
-  // Calculate age from DOB
   const calculateAge = (dob: string): number => {
     const birthDate = new Date(dob);
     const today = new Date();
@@ -91,7 +86,6 @@ export function PatientList({ patients, eventId, canEdit }: PatientListProps) {
     return age;
   };
   
-  // Get triage tag color class
   function getTriageTagClass(tag: string | null | undefined): string {
     if (!tag) return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200";
     
@@ -109,7 +103,6 @@ export function PatientList({ patients, eventId, canEdit }: PatientListProps) {
     }
   }
   
-  // If no patients after filtering
   if (filteredPatients.length === 0) {
     return (
       <div>
@@ -132,7 +125,7 @@ export function PatientList({ patients, eventId, canEdit }: PatientListProps) {
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All statuses</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="incomplete">Incomplete</SelectItem>
                 <SelectItem value="complete">Complete</SelectItem>
               </SelectContent>
@@ -143,7 +136,7 @@ export function PatientList({ patients, eventId, canEdit }: PatientListProps) {
                 <SelectValue placeholder="All triage tags" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All triage tags</SelectItem>
+                <SelectItem value="all">All triage tags</SelectItem>
                 <SelectItem value="RED">Red</SelectItem>
                 <SelectItem value="YELLOW">Yellow</SelectItem>
                 <SelectItem value="GREEN">Green</SelectItem>
@@ -197,7 +190,7 @@ export function PatientList({ patients, eventId, canEdit }: PatientListProps) {
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All statuses</SelectItem>
+              <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="incomplete">Incomplete</SelectItem>
               <SelectItem value="complete">Complete</SelectItem>
             </SelectContent>
@@ -208,7 +201,7 @@ export function PatientList({ patients, eventId, canEdit }: PatientListProps) {
               <SelectValue placeholder="All triage tags" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All triage tags</SelectItem>
+              <SelectItem value="all">All triage tags</SelectItem>
               <SelectItem value="RED">Red</SelectItem>
               <SelectItem value="YELLOW">Yellow</SelectItem>
               <SelectItem value="GREEN">Green</SelectItem>

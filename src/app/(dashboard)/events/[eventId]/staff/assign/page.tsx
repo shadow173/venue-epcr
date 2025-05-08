@@ -65,27 +65,28 @@ async function getAvailableUsers(eventId: string) {
   }
 }
 
-export default async function AssignStaffPage({
-  params,
-}: {
-  params: { eventId: string }
-}) {
+export default async function AssignStaffPage(
+  props: {
+    params: Promise<{ eventId: string }>
+  }
+) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   // Only admins can assign staff
   if (!session || session.user.role !== "ADMIN") {
     redirect("/");
   }
-  
+
   const [event, availableUsers] = await Promise.all([
     getEvent(params.eventId),
     getAvailableUsers(params.eventId),
   ]);
-  
+
   if (!event) {
     notFound();
   }
-  
+
   return (
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-start">

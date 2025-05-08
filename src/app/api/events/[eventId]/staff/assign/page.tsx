@@ -66,32 +66,33 @@ async function getAvailableUsers(eventId: string) {
   }
 }
 
-export default async function AssignStaffPage({
-  params
-}: {
-  params: { eventId: string }
-}) {
+export default async function AssignStaffPage(
+  props: {
+    params: Promise<{ eventId: string }>
+  }
+) {
+  const params = await props.params;
   // Get the current session
   const session = await getServerSession();
-  
+
   // Only admins can assign staff
   if (!session || session.user.role !== "ADMIN") {
     redirect("/");
   }
-  
+
   // Extract eventId from params
   const { eventId } = params;
-  
+
   // Fetch data in parallel
   const [event, availableUsers] = await Promise.all([
     getEvent(eventId),
     getAvailableUsers(eventId),
   ]);
-  
+
   if (!event) {
     notFound();
   }
-  
+
   return (
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-start">

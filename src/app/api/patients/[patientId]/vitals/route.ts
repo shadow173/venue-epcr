@@ -80,16 +80,14 @@ async function userHasPatientAccess(userId: string, userRole: string, patientId:
 }
 
 // GET - Get vitals for a patient
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { patientId: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ patientId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Check access
     const hasAccess = await userHasPatientAccess(
@@ -133,16 +131,14 @@ export async function GET(
 }
 
 // POST - Create vitals
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { patientId: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ patientId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Check access
     const hasAccess = await userHasPatientAccess(

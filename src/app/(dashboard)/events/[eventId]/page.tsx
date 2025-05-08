@@ -209,41 +209,42 @@ function determineEventStatus(startDate: Date, endDate: Date): string {
 }
 
 // Event Detail Page Component
-export default async function EventDetailPage({ params }: { params: { eventId: string } }) {
+export default async function EventDetailPage(props: { params: Promise<{ eventId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   // Redirect to login if not authenticated
   if (!session) {
     redirect("/auth/signin");
   }
-  
+
   // Check if user has access to this event
   const hasAccess = await userHasEventAccess(
     session.user.id,
     session.user.role,
     params.eventId
   );
-  
+
   if (!hasAccess) {
     redirect("/");
   }
-  
+
   // Fetch event data
   const event = await getEvent(params.eventId);
-  
+
   if (!event) {
     notFound();
   }
-  
+
   // Fetch staff and patients in parallel
   const [staff, patientsList] = await Promise.all([
     getStaffForEvent(params.eventId),
     getPatientsForEvent(params.eventId),
   ]);
-  
+
   const isAdmin = session.user.role === "ADMIN";
   const canEdit = isAdmin;
-  
+
   // Calculate counts for display
   const stats = {
     totalPatients: patientsList.length,
@@ -251,15 +252,15 @@ export default async function EventDetailPage({ params }: { params: { eventId: s
     pendingPatients: patientsList.filter(p => p.status !== 'complete').length,
     staffCount: staff.length
   };
-  
+
   // Format dates for display
   const formattedStartDate = format(event.startDate, "MMMM d, yyyy");
   const formattedStartTime = format(event.startDate, "h:mm a");
   const formattedEndTime = format(event.endDate, "h:mm a");
-  
+
   // Determine event status
   const eventStatus = determineEventStatus(event.startDate, event.endDate);
-  
+
   return (
     <div className="space-y-6">
       {/* Event Header */}

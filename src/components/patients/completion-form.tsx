@@ -97,10 +97,10 @@ export function CompletionForm({ assessment, canEdit, isAdmin }: CompletionFormP
     resolver: zodResolver(formSchema),
     defaultValues: {
       disposition: getValidDisposition(),
-      hospitalName: assessment.hospitalName || "",
-      emsUnit: assessment.emsUnit || "",
-      patientSignature: assessment.patientSignature || "",
-      emtSignature: assessment.emtSignature || "",
+      hospitalName: assessment.hospitalName || undefined,
+      emsUnit: assessment.emsUnit || undefined,
+      patientSignature: assessment.patientSignature || undefined,
+      emtSignature: assessment.emtSignature || undefined,
       status: getValidStatus(),
     },
   });
@@ -231,7 +231,7 @@ export function CompletionForm({ assessment, canEdit, isAdmin }: CompletionFormP
                   <FormLabel className="text-base font-semibold">Disposition</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value || undefined}
                     disabled={!canEdit}
                   >
                     <FormControl>
@@ -265,6 +265,7 @@ export function CompletionForm({ assessment, canEdit, isAdmin }: CompletionFormP
                         <Input 
                           placeholder="Enter hospital name" 
                           {...field} 
+                          value={field.value || ""}
                           disabled={!canEdit}
                         />
                       </FormControl>
@@ -283,6 +284,7 @@ export function CompletionForm({ assessment, canEdit, isAdmin }: CompletionFormP
                         <Input 
                           placeholder="Enter EMS unit number" 
                           {...field} 
+                          value={field.value || ""}
                           disabled={!canEdit}
                         />
                       </FormControl>
@@ -404,7 +406,7 @@ export function CompletionForm({ assessment, canEdit, isAdmin }: CompletionFormP
                       <FormControl>
                         <Select
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value || undefined}
                         >
                           <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Select status" />

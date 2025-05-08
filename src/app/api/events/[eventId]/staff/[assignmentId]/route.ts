@@ -9,14 +9,15 @@ import { eq, and } from "drizzle-orm";
 // DELETE - Remove staff assignment (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { eventId: string, assignmentId: string } }
+  props: { params: Promise<{ eventId: string, assignmentId: string }> }
 ) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Extract params
     const { eventId, assignmentId } = params;

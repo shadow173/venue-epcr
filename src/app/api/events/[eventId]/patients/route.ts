@@ -35,16 +35,14 @@ async function userHasEventAccess(userId: string, userRole: string, eventId: str
 }
 
 // GET - List patients for an event with time-based access control
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { eventId: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ eventId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Check event access
     const hasAccess = await userHasEventAccess(
@@ -126,16 +124,14 @@ export async function GET(
 }
 
 // POST - Create a new patient
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { eventId: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ eventId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Check event access
     const hasAccess = await userHasEventAccess(

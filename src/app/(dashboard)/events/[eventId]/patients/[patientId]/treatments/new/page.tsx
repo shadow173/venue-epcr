@@ -78,23 +78,24 @@ async function checkPatientAccess(eventId: string, patientId: string, userId: st
 }
 
 interface NewTreatmentPageProps {
-  params: {
+  params: Promise<{
     eventId: string; 
     patientId: string;
-  };
+  }>;
 }
 
-export default async function NewTreatmentPage({ params }: NewTreatmentPageProps) {
+export default async function NewTreatmentPage(props: NewTreatmentPageProps) {
+  const params = await props.params;
   // Extract params
   const { eventId, patientId } = params;
-  
+
   const session = await getServerSession();
-  
+
   // Ensure user is authenticated
   if (!session) {
     redirect("/auth/signin");
   }
-  
+
   // Check patient access
   const patient = await checkPatientAccess(
     eventId,
@@ -102,11 +103,11 @@ export default async function NewTreatmentPage({ params }: NewTreatmentPageProps
     session.user.id,
     session.user.role
   );
-  
+
   if (!patient) {
     notFound();
   }
-  
+
   return (
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-start">

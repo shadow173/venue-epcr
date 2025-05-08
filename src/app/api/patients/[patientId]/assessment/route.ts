@@ -89,16 +89,14 @@ async function userHasPatientAccess(userId: string, userRole: string, patientId:
 }
 
 // PATCH - Update assessment
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { patientId: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ patientId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Check access
     const hasAccess = await userHasPatientAccess(

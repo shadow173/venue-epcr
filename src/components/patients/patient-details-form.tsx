@@ -35,7 +35,6 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
-// Define form schema - make all fields explicitly required/optional
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -46,7 +45,6 @@ const formSchema = z.object({
   triageTag: z.string().optional(),
 });
 
-// Define our form values type
 type FormValues = z.infer<typeof formSchema>;
 
 interface PatientDetailsFormProps {
@@ -70,7 +68,6 @@ export function PatientDetailsForm({ patient, canEdit }: PatientDetailsFormProps
   const [file, setFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(patient.fileAttachmentUrl);
   
-  // Explicitly type the form
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -82,14 +79,12 @@ export function PatientDetailsForm({ patient, canEdit }: PatientDetailsFormProps
     },
   });
   
-  // Define the submit handler
   const onSubmit = form.handleSubmit(async (values: FormValues) => {
     if (!canEdit) return;
     
     setIsSubmitting(true);
     
     try {
-      // Create FormData for file upload
       const formData = new FormData();
       formData.append("firstName", values.firstName);
       formData.append("lastName", values.lastName);
@@ -129,13 +124,11 @@ export function PatientDetailsForm({ patient, canEdit }: PatientDetailsFormProps
     }
   });
   
-  // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
       
-      // Create a temporary URL for preview
       const url = URL.createObjectURL(selectedFile);
       setFileUrl(url);
     }
@@ -241,7 +234,7 @@ export function PatientDetailsForm({ patient, canEdit }: PatientDetailsFormProps
                     <FormLabel>Triage Tag</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value || undefined}
                       disabled={!canEdit}
                     >
                       <FormControl>
@@ -250,7 +243,7 @@ export function PatientDetailsForm({ patient, canEdit }: PatientDetailsFormProps
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No tag</SelectItem>
+                        <SelectItem value="none">No tag</SelectItem>
                         <SelectItem value="GREEN">Green</SelectItem>
                         <SelectItem value="YELLOW">Yellow</SelectItem>
                         <SelectItem value="RED">Red</SelectItem>
@@ -347,7 +340,6 @@ export function PatientDetailsForm({ patient, canEdit }: PatientDetailsFormProps
                   </div>
                 )}
               </div>
-              {/* Hidden field for the file upload */}
               <input 
                 type="hidden" 
                 name="existingFileUrl" 

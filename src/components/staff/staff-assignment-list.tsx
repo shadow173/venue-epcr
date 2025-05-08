@@ -63,27 +63,22 @@ interface StaffAssignmentListProps {
 export function StaffAssignmentList({ staff, eventId, canEdit }: StaffAssignmentListProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [staffToRemove, setStaffToRemove] = useState<StaffMember | null>(null);
   
-  // Apply filters to the staff list
   const filteredStaff = staff.filter((member) => {
-    // Apply search filter (case insensitive)
     const searchMatch = searchQuery === "" || 
       member.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.user.email.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Apply role filter
-    const roleMatch = roleFilter === "" || member.role === roleFilter;
+    const roleMatch = roleFilter === "all" || member.role === roleFilter;
     
     return searchMatch && roleMatch;
   });
   
-  // Get unique roles for the filter dropdown
   const uniqueRoles = Array.from(new Set(staff.map(member => member.role)));
   
-  // Handle removing a staff member
   const handleRemoveStaff = async () => {
     if (!staffToRemove) return;
     
@@ -94,7 +89,6 @@ export function StaffAssignmentList({ staff, eventId, canEdit }: StaffAssignment
       });
       
       if (response.ok) {
-        // Refresh the page to show updated staff list
         router.refresh();
         setIsRemoveDialogOpen(false);
       } else {
@@ -105,7 +99,6 @@ export function StaffAssignmentList({ staff, eventId, canEdit }: StaffAssignment
     }
   };
   
-  // If no staff after filtering
   if (filteredStaff.length === 0) {
     return (
       <div>
@@ -129,7 +122,7 @@ export function StaffAssignmentList({ staff, eventId, canEdit }: StaffAssignment
                   <SelectValue placeholder="All roles" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All roles</SelectItem>
+                  <SelectItem value="all">All roles</SelectItem>
                   {uniqueRoles.map(role => (
                     <SelectItem key={role} value={role}>{role}</SelectItem>
                   ))}
@@ -184,7 +177,7 @@ export function StaffAssignmentList({ staff, eventId, canEdit }: StaffAssignment
                 <SelectValue placeholder="All roles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All roles</SelectItem>
+                <SelectItem value="all">All roles</SelectItem>
                 {uniqueRoles.map(role => (
                   <SelectItem key={role} value={role}>{role}</SelectItem>
                 ))}

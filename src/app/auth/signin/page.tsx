@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -37,7 +37,8 @@ const formSchema = z.object({
   }),
 });
 
-export default function SignInPage() {
+// Create a separate component that uses useSearchParams
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
@@ -80,7 +81,93 @@ export default function SignInPage() {
       setIsLoading(false);
     }
   }
-  
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <MailIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <Input
+                    placeholder="your.email@example.com"
+                    className="pl-10"
+                    {...field}
+                    disabled={isLoading}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <LockIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="pl-10"
+                    {...field}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOffIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? "Signing in..." : "Sign In"}
+        </Button>
+      </form>
+    </Form>
+  );
+}
+
+// Loading fallback for Suspense
+function SignInFormSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <div className="h-5 w-16 rounded bg-gray-200 dark:bg-gray-700"></div>
+        <div className="h-10 w-full rounded bg-gray-200 dark:bg-gray-700"></div>
+      </div>
+      <div className="space-y-2">
+        <div className="h-5 w-16 rounded bg-gray-200 dark:bg-gray-700"></div>
+        <div className="h-10 w-full rounded bg-gray-200 dark:bg-gray-700"></div>
+      </div>
+      <div className="h-10 w-full rounded bg-gray-200 dark:bg-gray-700"></div>
+    </div>
+  );
+}
+
+// Main page component
+export default function SignInPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
       <div className="mx-auto w-full max-w-md px-4">
@@ -104,69 +191,9 @@ export default function SignInPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <MailIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                          <Input
-                            placeholder="your.email@example.com"
-                            className="pl-10"
-                            {...field}
-                            disabled={isLoading}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <LockIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="••••••••"
-                            className="pl-10"
-                            {...field}
-                            disabled={isLoading}
-                          />
-                          <button
-                            type="button"
-                            className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? (
-                              <EyeOffIcon className="h-5 w-5" />
-                            ) : (
-                              <EyeIcon className="h-5 w-5" />
-                            )}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            </Form>
+            <Suspense fallback={<SignInFormSkeleton />}>
+              <SignInForm />
+            </Suspense>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">

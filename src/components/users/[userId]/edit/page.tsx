@@ -31,30 +31,31 @@ async function getUser(userId: string) {
   }
 }
 
-export default async function EditUserPage({
-  params,
-}: {
-  params: { userId: string }
-}) {
+export default async function EditUserPage(
+  props: {
+    params: Promise<{ userId: string }>
+  }
+) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   // Only admins can edit users
   if (!session || session.user.role !== "ADMIN") {
     redirect("/");
   }
-  
+
   const user = await getUser(params.userId);
-  
+
   if (!user) {
     notFound();
   }
-  
+
   // Format certification end date
   const formattedUser = {
     ...user,
     certificationEndDate: user.certificationEndDate ? new Date(user.certificationEndDate) : undefined,
   };
-  
+
   return (
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-start">

@@ -19,16 +19,14 @@ const updateVenueSchema = z.object({
 });
 
 // GET - Get a specific venue
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     const venue = await db.select().from(venues).where(eq(venues.id, params.id)).limit(1);
     
@@ -46,16 +44,14 @@ export async function GET(
 }
 
 // PATCH - Update a venue (admin only)
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     const body = await request.json();
     const validatedData = updateVenueSchema.parse(body);
@@ -86,16 +82,14 @@ export async function PATCH(
 }
 
 // DELETE - Delete a venue (admin only)
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     const deletedVenue = await db.delete(venues)
       .where(eq(venues.id, params.id))

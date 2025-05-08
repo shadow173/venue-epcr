@@ -40,16 +40,14 @@ async function userHasAccess(userId: string, userRole: string, eventId: string):
 }
 
 // GET - Get a specific event with venue details and counts
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { eventId: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ eventId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Check access
     const hasAccess = await userHasAccess(
@@ -159,16 +157,14 @@ export async function GET(
 }
 
 // PATCH - Update an event (admin only)
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { eventId: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ eventId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     const body = await request.json();
     const validatedData = updateEventSchema.parse(body);
@@ -232,16 +228,14 @@ export async function PATCH(
 }
 
 // DELETE - Delete an event (admin only)
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { eventId: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ eventId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession();
-  
+
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     // Delete event - Note: This assumes cascading deletes are set up in the database
     const deletedEvent = await db.delete(events)
